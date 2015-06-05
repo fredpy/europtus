@@ -15,7 +15,8 @@ specifically the use of IMC for communication and neptus as potential interface.
 ## Dependencies
 
 The program so far depends on:
- * C++ boost libraries 1.47: http://www.boost.org
+ * cmake: http://www.cmake.org
+ * C++ boost libraries 1.47 or above: http://www.boost.org
  * europa-pso planner 2.6: https://github.com/nasa/europa
  
 Expected future dependencies:
