@@ -35,9 +35,10 @@
 # define H_europtus_planner_europa_protect
 
 # include <boost/noncopyable.hpp>
-# include <boost/asio/strand.hpp>
 # include <boost/scoped_ptr.hpp>
 # include <boost/thread/shared_mutex.hpp>
+
+# include "europtus/priority_strand.hh"
 
 namespace europtus {
   namespace planner {
@@ -60,8 +61,10 @@ namespace europtus {
        */
       class europa_protect :boost::noncopyable {
       public:
+        typedef europtus::priority_strand strand_type;
+        
         static void init(boost::asio::io_service &io);
-        static boost::asio::strand &strand();
+        static strand_type &strand();
       
         ~europa_protect();
       private:
@@ -73,7 +76,7 @@ namespace europtus {
         
         static void make_instance(boost::asio::io_service &io);
       
-        boost::asio::strand m_strand;
+        strand_type m_strand;
       
         europa_protect(boost::asio::io_service &io);
 

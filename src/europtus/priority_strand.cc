@@ -1,7 +1,7 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2015, Frederic Py
+ *  Copyright (c) 2014, Frederic Py.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -31,58 +31,80 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-#include "europtus/planner/europa_protect.hh"
-#include "europtus/planner/exception.hh"
+#include "europtus/priority_strand.hh"
+#include "private/priority_strand_impl.hh"
 
-#include <boost/thread/once.hpp>
+#include <boost/smart_ptr/make_shared.hpp>
 
-namespace {
-  boost::once_flag o_flag = BOOST_ONCE_INIT;
-}
-
-
-using namespace europtus::planner::details;
+using namespace europtus;
 namespace asio=boost::asio;
 
 /*
- * class europtus::planner::details::europa_protect
+ * class TREX::utils::priority_strand::task
  */
 
-// statics
-
-europa_protect::mutex_type  europa_protect::s_mtx;
-boost::scoped_ptr<europa_protect> europa_protect::s_instance;
-
-void europa_protect::make_instance(asio::io_service &io) {
-  boost::upgrade_lock<mutex_type> lock(s_mtx);
-  if( !s_instance ) {
-    boost::upgrade_to_unique_lock<mutex_type> write(lock);
-    s_instance.reset(new europa_protect(io));
-    std::cout<<"created europa protection"<<std::endl;
-  }
+bool priority_strand::task::operator< (priority_strand::task const &other) const {
+  return other.m_level && ( !m_level || (*other.m_level)<(*m_level) );
 }
 
-void europa_protect::init(asio::io_service &io) {
-  // ensure that make_instance is called once and only once 
-  boost::call_once(o_flag, boost::bind(europa_protect::make_instance,
-                                       boost::ref(io)));
-}
-
-europa_protect::strand_type &europa_protect::strand() {
-  boost::shared_lock<mutex_type> read(s_mtx);
-  if( s_instance )
-    return s_instance->m_strand;
-  throw exception("Europa protection not initialized");
-}
+/*
+ * class TREX::utils::priority_strand
+ */
 
 // structors
 
-europa_protect::europa_protect(asio::io_service &io):m_strand(io) {}
+priority_strand::priority_strand(asio::io_service &io, bool active)
+:m_impl(boost::make_shared<pimpl>(boost::make_shared<asio::strand>(boost::ref(io)))) {
+  if( active )
+    m_impl->start();
+}
 
-europa_protect::~europa_protect() {
-  std::cout<<"destroyed europa protection"<<std::endl;
+priority_strand::priority_strand(boost::shared_ptr<asio::strand> const &s,
+                                 bool active)
+:m_impl(boost::make_shared<pimpl>(s)) {
+  if( active )
+    m_impl->start();
 }
 
 
+priority_strand::~priority_strand() {}
 
+// observers
+
+size_t priority_strand::tasks() const {
+  return m_impl->tasks();
+}
+
+bool priority_strand::empty() const {
+  return m_impl->empty();
+}
+
+bool priority_strand::is_active() const {
+  return m_impl->active();
+}
+
+// modifiers
+
+void priority_strand::start() {
+  m_impl->start();
+}
+
+void priority_strand::stop() {
+  m_impl->stop();
+}
+
+// manipulators
+
+boost::asio::strand &priority_strand::strand() {
+  return m_impl->strand();
+}
+
+
+void priority_strand::enqueue(priority_strand::task *t) {
+  m_impl->enqueue(t);
+}
+
+void priority_strand::clear() {
+  m_impl->clear();
+}
 

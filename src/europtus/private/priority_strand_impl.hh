@@ -1,7 +1,7 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2015, Frederic Py
+ *  Copyright (c) 2014, Frederic Py.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -31,58 +31,60 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-#include "europtus/planner/europa_protect.hh"
-#include "europtus/planner/exception.hh"
+#ifndef H_europtus_private_priority_stand_impl
+# define H_europtus_private_priority_stand_impl
 
-#include <boost/thread/once.hpp>
+# include "europtus/priority_strand.hh"
 
-namespace {
-  boost::once_flag o_flag = BOOST_ONCE_INIT;
-}
+# include <boost/thread/mutex.hpp>
+# include <boost/thread/shared_mutex.hpp>
+
+# include <queue>
+
+namespace europtus {
+  
+  class priority_strand::pimpl: boost::noncopyable,
+  public boost::enable_shared_from_this<priority_strand::pimpl> {
+  public:
+    typedef priority_strand::task *task_ref;
+    
+    pimpl(boost::shared_ptr<boost::asio::strand> const &s);
+    ~pimpl();
+    
+    boost::asio::strand &strand() {
+      return *m_strand;
+    }
+    
+    void enqueue(task_ref tsk);
+    
+    bool active() const;
+    void start();
+    void stop();
+    
+    size_t tasks() const;
+    bool empty() const;
+    void clear();
+    
+  private:
+    struct task_cmp {
+      bool operator()(task_ref a, task_ref b) const;
+    };
+    typedef std::priority_queue<task_ref, std::vector<task_ref>,
+    task_cmp> task_queue;
+    
+    boost::shared_ptr<boost::asio::strand> m_strand;
+    mutable boost::shared_mutex     m_mutex;
+    task_queue                      m_queue;
+    bool                            m_active;
+    
+    
+    void dequeue_sync();
+    
+    // no code
+    pimpl();
+  }; // europtus::priority_strand::pimpl
+  
+} // europtus
 
 
-using namespace europtus::planner::details;
-namespace asio=boost::asio;
-
-/*
- * class europtus::planner::details::europa_protect
- */
-
-// statics
-
-europa_protect::mutex_type  europa_protect::s_mtx;
-boost::scoped_ptr<europa_protect> europa_protect::s_instance;
-
-void europa_protect::make_instance(asio::io_service &io) {
-  boost::upgrade_lock<mutex_type> lock(s_mtx);
-  if( !s_instance ) {
-    boost::upgrade_to_unique_lock<mutex_type> write(lock);
-    s_instance.reset(new europa_protect(io));
-    std::cout<<"created europa protection"<<std::endl;
-  }
-}
-
-void europa_protect::init(asio::io_service &io) {
-  // ensure that make_instance is called once and only once 
-  boost::call_once(o_flag, boost::bind(europa_protect::make_instance,
-                                       boost::ref(io)));
-}
-
-europa_protect::strand_type &europa_protect::strand() {
-  boost::shared_lock<mutex_type> read(s_mtx);
-  if( s_instance )
-    return s_instance->m_strand;
-  throw exception("Europa protection not initialized");
-}
-
-// structors
-
-europa_protect::europa_protect(asio::io_service &io):m_strand(io) {}
-
-europa_protect::~europa_protect() {
-  std::cout<<"destroyed europa protection"<<std::endl;
-}
-
-
-
-
+#endif // H_trex_utils_private_priority_stand_impl

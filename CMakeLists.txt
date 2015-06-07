@@ -158,27 +158,33 @@ add_executable(europtus
   src/europtus.cc
   src/europtus/asio_pool.cc
   src/europtus/clock.cc
+  src/europtus/priority_strand.cc
   src/europtus/version.cc
   src/europtus/planner/assembly.cc
   src/europtus/planner/europa_protect.cc
   src/europtus/planner/exception.cc
   src/europtus/planner/ModuleEuroptus.cc
+  src/europtus/private/priority_strand_impl.cc
 
   # headers
   include/europtus/asio_pool.hh
   include/europtus/clock.hh
+  include/europtus/priority_strand.hh
   include/europtus/rt_clock.hh
   include/europtus/tick_clock.hh
   include/europtus/time_utils.hh
   include/europtus/version.hh
+  include/europtus/bits/async_result.hh
   ${CMAKE_BINARY_DIR}/include/europtus/bits/version.hh
   include/europtus/planner/assembly.hh
   include/europtus/planner/europa_protect.hh
   include/europtus/planner/exception.hh
   include/europtus/planner/ModuleEuroptus.hh
   ${CMAKE_BINARY_DIR}/include/europtus/planner/bits/europa_cfg.hh
+  src/europtus/private/priority_strand_impl.hh
 
   # template code
+  include/europtus/bits/priority_strand.tcc
   include/europtus/bits/rt_clock.tcc
   include/europtus/bits/time_utils.tcc
   )
