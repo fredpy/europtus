@@ -77,7 +77,8 @@ europa_protect::strand_type &europa_protect::strand() {
 
 // structors
 
-europa_protect::europa_protect(asio::io_service &io):m_strand(io) {}
+europa_protect::europa_protect(asio::io_service &io)
+:m_strand(io,true) {}
 
 europa_protect::~europa_protect() {
   std::cout<<"destroyed europa protection"<<std::endl;
