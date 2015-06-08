@@ -109,7 +109,30 @@ assembly::pimpl::restict_global(char const *name,
   return ret;
 }
 
-
+bool assembly::pimpl::nddl(std::string path, std::string file) {
+  // First inject the nddl search path
+  
+  std::cout<<"nddl.includePath = "<<path<<std::endl;
+  getLanguageInterpreter("nddl")->getEngine()->getConfig()->setProperty("nddl.includePath", path);
+  
+  try {
+    std::string ret = executeScript("nddl", file, true);
+    
+    if( !ret.empty() )
+      throw exception("Errors while parsing \""+file+"\":\n"+ret);
+  } catch(eu::PSLanguageExceptionList &le) {
+    std::ostringstream err;
+    
+    err<<"Errors while parsing \""<<file<<"\":\n"<<le;
+    throw exception(err.str());
+  } catch(Error const &e) {
+    std::ostringstream err;
+    
+    err<<"Error while parsing \""<<file<<"\":\n"<<e;
+    throw exception(err.str());
+  }
+  return m_cstr->constraintConsistent();
+}
 
 void assembly::pimpl::init_clock() {
   

@@ -35,6 +35,7 @@
 
 #include <boost/bind.hpp>
 #include <boost/bind/apply.hpp>
+#include <boost/filesystem/operations.hpp>
 #include <boost/tokenizer.hpp>
 
 using namespace europtus::planner;
@@ -145,8 +146,40 @@ std::string const &assembly::search_path() const {
   return m_europa_path;
 }
 
+bool assembly::locate(path &p) const {
+  if( fs::is_regular_file(p) )
+    return true;
+  else {
+    path_mutex::scoped_lock lock(m_mtx);
+    
+    for(path_set::const_iterator i=m_path.begin();
+        m_path.end()!=i; ++i) {
+      path tmp(*i);
+      
+      tmp /= p;
+      if( fs::is_regular_file(tmp) ) {
+        p = tmp;
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
+
 
 // modifiers
+
+
+bool assembly::load_nddl(path nddl_file) {
+  nddl_file.make_preferred();
+  if( !locate(nddl_file) )
+    throw exception("Failed to locate file \""+nddl_file.string()+"\".");
+
+  return prot::strand().post(boost::bind(&pimpl::nddl, m_impl,
+                                          search_path(), nddl_file.string()),
+                             0).get();
+}
 
 bool assembly::add_search_path(assembly::path p) {
   if( !p.empty() ) {

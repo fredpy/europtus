@@ -64,7 +64,14 @@ namespace europtus {
       }
       std::string const &search_path() const;
       
+      bool load_nddl(boost::filesystem::path nddl_file);
+
+      
+      
     private:
+      bool locate(path &p) const;
+
+      
       static void send(boost::weak_ptr<pimpl> who,
                        boost::function<void (pimpl *)> fn,
                        priority_strand::priority_type p);

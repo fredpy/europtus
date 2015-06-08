@@ -35,6 +35,8 @@
 # define H_europtus_planner_private_assembly_impl
 
 # include "europtus/planner/assembly.hh"
+# include "europtus/planner/exception.hh"
+
 # include "europtus/planner/bits/europa_cfg.hh"
 
 # include <PLASMA/RulesEngineDefs.hh>
@@ -81,6 +83,8 @@ namespace europtus {
       void init_clock();
       void final_updated(clock::tick_type val);
       void tick_updated(clock::tick_type val);
+      
+      bool nddl(std::string path, std::string file);
       
     private:
       EUROPA::ConstrainedVariableId restict_global(char const *name,

@@ -60,32 +60,6 @@ namespace {
       return std::make_pair(std::string(), std::string());
   }
 
-  
-  void print_tick(europtus::clock &c, europtus::clock::tick_type t) {
-    std::cout<<'['<<t<<"] at "<<c.to_date(t)<<" ("<<c.rt_now()<<')'<<std::endl;
-  }
-  
-  void final_updated(europtus::clock &c, europtus::clock::tick_type f) {
-    std::cout<<"Finale tick updated to "<<f;
-    if( c.started() )
-      std::cout<<" or "<<c.to_date(f);
-    std::cout<<std::endl;
-  }
-  
-  void print_state(europtus::clock &c, europtus::clock::state s) {
-    switch( s ) {
-      case europtus::clock::clock_started:
-        c.on_tick().connect(print_tick);
-        c.on_final_update().connect(final_updated);
-        std::cout<<"Clock started at "<<c.epoch()<<" to "<<c.end()<<std::endl;
-        break;
-      case europtus::clock::clock_completed:
-        std::cerr<<"Clock terminated at tick "<<c.tick()<<std::endl;
-        break;
-      default:
-        std::cerr<<"Unknown clock state ("<<s<<')'<<std::endl;
-    }
-  }
 }
 
 int main(int argc, char *argv[]) {
@@ -208,10 +182,6 @@ int main(int argc, char *argv[]) {
   
   europtus::planner::details::europa_protect::init(pool.service());
   
-  // this will handle events and display them
-  clock.on_clock(print_state);
-  
-
   
   // Todo: wrap europa calls into a strand
   europtus::planner::assembly europa(pool.service(), clock);
@@ -229,8 +199,7 @@ int main(int argc, char *argv[]) {
   
   // Now we load the model
   try {
-//    europa.load_model(model);
-//    europa.init_clock_model();
+    europa.load_nddl(model);
     
     clock.start();
     
