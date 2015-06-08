@@ -34,7 +34,7 @@
 #ifndef H_europtus_planner_ModuleEuroptus
 # define H_europtus_planner_ModuleEuroptus
 
-// include this before any europa header
+# include "europtus/planner/assembly.hh"
 # include "europtus/planner/bits/europa_cfg.hh"
 
 # include <PLASMA/Module.hh>
@@ -42,8 +42,6 @@
 
 namespace europtus {
   namespace planner {
-    
-    class assembly;
     
     /*
      * class used to inject europa extensions
@@ -54,7 +52,7 @@ namespace europtus {
      */
     class ModuleEuroptus :public EUROPA::Module {
     public:
-      ModuleEuroptus(assembly &ref);
+      ModuleEuroptus(assembly::pimpl *ref);
       ~ModuleEuroptus();
       
       void initialize();
@@ -63,7 +61,7 @@ namespace europtus {
       void uninitialize(EUROPA::EngineId engine);
       
     private:
-      assembly &m_assembly;
+      assembly::pimpl *m_assembly;
     }; // europtus::planner::ModuleEuroptus
     
   }

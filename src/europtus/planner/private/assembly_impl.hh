@@ -90,7 +90,7 @@ namespace europtus {
       EUROPA::ConstrainedVariableId restict_global(char const *name,
                                                    char const *type,
                                                    EUROPA::Domain const &base);
-      
+      EUROPA::ModuleId m_europtus;
       clock &m_clock;
       
       schema_type   m_schema;

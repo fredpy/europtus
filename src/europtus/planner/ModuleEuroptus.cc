@@ -32,7 +32,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 #include "europtus/planner/ModuleEuroptus.hh"
-#include "europtus/planner/assembly.hh"
+#include "private/assembly_impl.hh"
 
 using namespace europtus::planner;
 namespace eu=EUROPA;
@@ -40,9 +40,8 @@ namespace eu=EUROPA;
 /*
  * class europtus::planner::ModuleEuroptus
  */
-ModuleEuroptus::ModuleEuroptus(assembly &ref)
-  :eu::Module("Europtus"),m_assembly(ref) {
-}
+ModuleEuroptus::ModuleEuroptus(assembly::pimpl *ref)
+  :eu::Module("Europtus"),m_assembly(ref) {}
 
 ModuleEuroptus::~ModuleEuroptus() {
 }
@@ -53,6 +52,7 @@ void ModuleEuroptus::initialize() {
 
 void ModuleEuroptus::uninitialize() {
   std::cout<<"europtus removed"<<std::endl;
+  m_assembly = NULL;
 }
 
 void ModuleEuroptus::initialize(eu::EngineId engine) {

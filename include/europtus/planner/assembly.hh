@@ -45,6 +45,8 @@
 namespace europtus {
   namespace planner {
     
+    class ModuleEuroptus;
+    
     
     class assembly :boost::noncopyable {
       class pimpl;
@@ -99,6 +101,8 @@ namespace europtus {
       mutable std::string      m_europa_path;
 
       path_set                 m_path;
+      
+      friend class ModuleEuroptus;
     }; // europtus::planner::assembly
     
     

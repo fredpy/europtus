@@ -73,7 +73,8 @@ assembly::pimpl::pimpl(clock &c):m_clock(c) {
   addModule((new eu::ModuleNddl())->getId());
   
   // and also outr own extensions
-  // addModule((new ModuleEuroptus(*this))->getId());
+  m_europtus = (new ModuleEuroptus(this))->getId();
+  addModule(m_europtus);
   
   // complete the intiialization
   doStart();
@@ -88,6 +89,8 @@ assembly::pimpl::pimpl(clock &c):m_clock(c) {
 
 
 assembly::pimpl::~pimpl() {
+  // make sure that my module is removed before this class is destroyed
+  removeModule(m_europtus);
   doShutdown();
 }
 
