@@ -1,7 +1,7 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2015, Frederic Py
+ *  Copyright (c) 2015, Frederic Py.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -31,10 +31,10 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef H_europtus_planner_assembly
-# define H_europtus_planner_assembly
+#ifndef H_europtus_planner_private_assembly_impl
+# define H_europtus_planner_private_assembly_impl
 
-# include "europtus/clock.hh"
+# include "europtus/planner/assembly.hh"
 # include "europtus/planner/bits/europa_cfg.hh"
 
 # include <PLASMA/RulesEngineDefs.hh>
@@ -44,87 +44,62 @@
 # include <PLASMA/Solver.hh>
 # include <PLASMA/TemporalNetwork.hh>
 
-
-# include <boost/noncopyable.hpp>
-# include <boost/filesystem/path.hpp>
-
-# include <set>
+# include <boost/enable_shared_from_this.hpp>
+# include <boost/make_shared.hpp>
 
 
 namespace europtus {
   namespace planner {
-    
   
-    class assembly: public EUROPA::EngineBase, boost::noncopyable {
+    class assembly::pimpl :public EUROPA::EngineBase, boost::noncopyable,
+    public boost::enable_shared_from_this<assembly::pimpl> {
     public:
+      static boost::filesystem::path const s_europa;
+      
       typedef EUROPA::SchemaId           schema_type;
       typedef EUROPA::PlanDatabaseId     plan_db_type;
       typedef EUROPA::ConstraintEngineId cstr_eng_type;
-      
       typedef EUROPA::SOLVERS::SolverId  solver_type;
       
-      explicit assembly(clock &c);
-      ~assembly();
-
-      bool add_search_path(boost::filesystem::path p);
-      size_t add_search_path(std::string p);
-      size_t add_search_path(char const *s) {
-        if( NULL!=s )
-          return add_search_path(std::string(s));
-        return 0;
-      }
-      std::string const &nddl_path() const;
-      
-      
-      void configure(std::string const &solver_cfg);
-      bool load_model(boost::filesystem::path nddl_file);
-
-      schema_type   const &schema()      const {
-        return m_schema;
-      }
-      plan_db_type  const &plan_db()     const {
-        return m_plan;
-      }
-      cstr_eng_type const &cstr_engine() const {
-        return m_cstr;
-      }
-      solver_type const &planner() const {
-        return m_planner;
+      static boost::shared_ptr<pimpl> create(clock &c) {
+        return boost::make_shared<pimpl>(boost::ref(c));
       }
       
-      clock &clk() {
-        return m_clock;
+      explicit pimpl(clock &c);
+      ~pimpl();
+      
+      static void async_exec(boost::weak_ptr<pimpl> who,
+                             boost::function<void (pimpl *)> fn) {
+        boost::shared_ptr<pimpl> me(who.lock());
+        if( me )
+          fn(me.get());
       }
-      void init_clock_model();
+      static void release(boost::shared_ptr<pimpl> &me) {
+        me.reset();
+      }
+      
+      void init_clock();
+      void final_updated(clock::tick_type val);
+      void tick_updated(clock::tick_type val);
       
     private:
+      EUROPA::ConstrainedVariableId restict_global(char const *name,
+                                                   char const *type,
+                                                   EUROPA::Domain const &base);
+      
       clock &m_clock;
       
       schema_type   m_schema;
       plan_db_type  m_plan;
       cstr_eng_type m_cstr;
       
-      solver_type   m_planner;
+      EUROPA::ConstrainedVariableId m_cur, m_last;
       
-      typedef std::set<boost::filesystem::path> path_set;
+      pimpl();
       
-      path_set    m_path;
-      // cache local atttribute to avoid to reggenrate the nddl
-      // path every single time
-      mutable bool        m_path_fresh;
-      mutable std::string m_europa_path;
-      
-      bool locate(boost::filesystem::path &p) const;
-      
-      static boost::filesystem::path const s_europa;
-      
-      assembly();
-      
-      EUROPA::ConstrainedVariableId m_now;
-      void update_tick(clock &c, clock::tick_type t);
-    }; // europtus::planner::assembly
+    }; // europtus::planner::assmebly::pimpl
     
-  } // europtus::planner
-} // europtus
+  }
+}
 
-#endif // H_europtus_planner_assembly
+#endif // H_europtus_planner_private_assembly_impl

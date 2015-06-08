@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
 
   
   // Todo: wrap europa calls into a strand
-  europtus::planner::assembly europa(clock);
+  europtus::planner::assembly europa(pool.service(), clock);
   
   // I needed assembly to do this part so this option is parsed after
   // the main inits
@@ -229,8 +229,8 @@ int main(int argc, char *argv[]) {
   
   // Now we load the model
   try {
-    europa.load_model(model);
-    europa.init_clock_model();
+//    europa.load_model(model);
+//    europa.init_clock_model();
     
     clock.start();
     
