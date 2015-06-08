@@ -105,7 +105,7 @@ namespace europtus {
     ~async_result() {}
     
     bool is_exception() const {
-      m_except.is_exception();
+      return m_except.is_exception();
     }
     bool operator! () const {
       return is_exception();
