@@ -53,8 +53,26 @@ if(NOT EUROPA_FOUND)
   message(FATAL_ERROR "Failed to locate Europa planner libraries")
 endif(NOT EUROPA_FOUND)    
 
+
 find_package(Boost 1.47 REQUIRED COMPONENTS
   system filesystem thread date_time program_options chrono)
+
+set(DUNE_HOME $ENV{DUNE_HOME} CACHE PATH
+  "Home for the Dune library")
+
+find_library(DUNE_CORE_LIB NAMES dune-core HINTS ${DUNE_HOME}/lib 
+  DOCS "Looking for dune core library")
+if(NOT DUNE_CORE_LIB)
+  message(SEND_ERROR "Failed to locate dune-core library\n"
+    "Set your DUNE_HOME where dune is installed.")
+endif(NOT DUNE_CORE_LIB)
+
+find_path(DUNE_INCLUDE_DIR "Dune/Dune.hpp" HINTS ${DUNE_HOME}/include)
+if(NOT DUNE_INCLUDE_DIR)
+  message(SEND_ERROR "Failed to locate dune headers\n"
+    "Set your DUNE_HOME where dune is installed.")
+endif(NOT DUNE_INCLUDE_DIR)
+
 
 include(CMakeParseArguments)
 
@@ -146,7 +164,8 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/include # where project c++ headers will be located
   ${CMAKE_BINARY_DIR}/include # where project c++ headers will be generated
   ${Boost_INCLUDE_DIR}
-  ${EUROPA_INCLUDE_DIR})
+  ${EUROPA_INCLUDE_DIR}
+  ${DUNE_INCLUDE_DIR})
 
 configure_file(include/europtus/bits/version.hh.in
   include/europtus/bits/version.hh)
@@ -160,6 +179,7 @@ add_executable(europtus
   src/europtus/clock.cc
   src/europtus/priority_strand.cc
   src/europtus/version.cc
+  src/europtus/dune/clock.cc
   src/europtus/planner/assembly.cc
   src/europtus/planner/europa_protect.cc
   src/europtus/planner/exception.cc
@@ -178,6 +198,7 @@ add_executable(europtus
   include/europtus/version.hh
   include/europtus/bits/async_result.hh
   ${CMAKE_BINARY_DIR}/include/europtus/bits/version.hh
+  include/europtus/dune/clock.hh
   include/europtus/planner/assembly.hh
   include/europtus/planner/europa_protect.hh
   include/europtus/planner/exception.hh
@@ -202,5 +223,6 @@ target_link_libraries(europtus
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_CHRONO_LIBRARY}
   ${EUROPA_LIBRARIES}
+  ${DUNE_CORE_LIB}
 )
   

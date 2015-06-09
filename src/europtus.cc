@@ -37,7 +37,7 @@
 #include <boost/shared_ptr.hpp>
 
 #include "europtus/asio_pool.hh"
-#include "europtus/rt_clock.hh"
+#include "europtus/dune/clock.hh"
 #include "europtus/version.hh"
 #include "europtus/planner/assembly.hh"
 #include "europtus/planner/exception.hh"
@@ -63,7 +63,7 @@ namespace {
 }
 
 int main(int argc, char *argv[]) {
-  typedef europtus::rt_clock< boost::milli > s_clock;
+  typedef europtus::dune::steady_clock s_clock;
 
   // number of threads for asio (1 by default)
   size_t threads=1;
