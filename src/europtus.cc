@@ -199,6 +199,7 @@ int main(int argc, char *argv[]) {
   
   // Now we load the model
   try {
+    europa.load_solver("PlannerConfig.xml");
     europa.load_nddl(model);
     
     clock.start();

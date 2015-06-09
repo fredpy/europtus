@@ -62,7 +62,8 @@ boost::filesystem::path const assembly::pimpl::s_europa(EUROPA_HOME"/include");
 
 // structor
 
-assembly::pimpl::pimpl(clock &c):m_clock(c) {
+assembly::pimpl::pimpl(clock &c)
+  :m_clock(c),m_planning(false),m_pending(false) {
   // Populate europa with desired modules
   addModule((new eu::ModuleConstraintEngine())->getId());
   addModule((new eu::ModuleConstraintLibrary())->getId());
@@ -96,6 +97,54 @@ assembly::pimpl::~pimpl() {
 
 // manipulators
 
+void assembly::pimpl::check_planning() {
+  
+  if( m_solver.isId() ) {
+    if( m_cstr->provenInconsistent() || !m_solver->noMoreFlaws() ) {
+      if( !m_planning ) {
+        std::cout<<"Started to plan."<<std::endl;
+        m_planning = true;
+      }
+      if( !m_pending ) {
+        m_pending = true;
+        boost::weak_ptr<pimpl> me(shared_from_this());
+        
+        prot::strand().send(boost::bind(&pimpl::async_exec,
+                                        me,
+                                        &pimpl::do_step),
+                            assembly::plan_p);
+      }
+    } else if( m_planning ) {
+      m_planning = false;
+      std::cout<<"Planning completed after "<<m_solver->getStepCount()
+      <<" steps (depth="<<m_solver->getDepth()<<")."<<std::endl;
+      std::cout<<"Plan:\n"<<m_plan->toString()<<std::endl;
+    }
+  } else
+    std::cerr<<"No solver to plan yet."<<std::endl;
+}
+
+void assembly::pimpl::do_step() {
+  m_pending = false;
+  if( m_solver->isExhausted() )
+    std::cerr<<"Solver exhausted its search !!!"<<std::endl;
+  else {
+    // Ensure that constraints are propagated
+    if( m_cstr->pending() )
+      m_cstr->propagate();
+    if( m_cstr->constraintConsistent() ) {
+      m_solver->step();
+      if( m_cstr->pending() )
+        m_cstr->propagate();
+    }
+    if( m_cstr->provenInconsistent() ) {
+      std::cerr<<"backtrack due to inconsistency !!!"<<std::endl;
+      m_solver->backjump(1);
+    }
+    check_planning();
+  }
+}
+
 eu::ConstrainedVariableId
 assembly::pimpl::restict_global(char const *name,
                                 char const *type,
@@ -111,6 +160,12 @@ assembly::pimpl::restict_global(char const *name,
   }
   return ret;
 }
+
+void assembly::pimpl::cfg_solver(std::string file) {
+  boost::scoped_ptr<eu::TiXmlElement> xml_cfg(eu::initXml(file.c_str()));
+  m_solver = (new eu_s::Solver(m_plan, *xml_cfg))->getId();
+}
+
 
 bool assembly::pimpl::nddl(std::string path, std::string file) {
   // First inject the nddl search path
@@ -134,6 +189,7 @@ bool assembly::pimpl::nddl(std::string path, std::string file) {
     err<<"Error while parsing \""<<file<<"\":\n"<<e;
     throw exception(err.str());
   }
+  check_planning();
   return m_cstr->constraintConsistent();
 }
 
@@ -141,20 +197,24 @@ void assembly::pimpl::init_clock() {
   
   double
     secs = ch::duration_cast< ch::duration<double> >(m_clock.tick_duration()).count();
-  restict_global("TICK_DURATION", eu::FloatDT::NAME().c_str(),
-                 eu::IntervalDomain(secs));
+  eu::ConstrainedVariableId dur = restict_global("TICK_DURATION",
+                                                 eu::FloatDT::NAME().c_str(),
+                                                 eu::IntervalDomain(secs));
+  std::cout<<dur->toLongString()<<std::endl;
   m_cur = restict_global("CUR_DATE", eu::IntDT::NAME().c_str(),
                          eu::IntervalIntDomain());
   m_last = restict_global("FINAL_TICK", eu::IntDT::NAME().c_str(),
                           eu::IntervalIntDomain());
 
   m_clock.restrict_final(eu::cast_basis(std::numeric_limits<eu::eint>::max()));
+  check_planning();
 }
 
 void assembly::pimpl::final_updated(clock::tick_type final) {
   if( final<=eu::cast_basis(std::numeric_limits<eu::eint>::max()) ) {
     m_last->restrictBaseDomain(eu::IntervalIntDomain(0, final));
     std::cout<<m_last->toLongString()<<std::endl;
+    check_planning();
   }
 }
 
@@ -165,5 +225,6 @@ void assembly::pimpl::tick_updated(clock::tick_type cur) {
            std::numeric_limits<eu::eint>::infinity());
     m_cur->restrictBaseDomain(future);
     std::cout<<m_cur->toLongString()<<std::endl;
+    check_planning();
   }
 }

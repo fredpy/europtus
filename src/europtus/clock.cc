@@ -152,7 +152,7 @@ void clock::start() {
   }
   m_clock_ev(*this, clock_started);
   m_tick_ev(*this, now);
-  std::cout<<"Started clock from "<<from<<" to "<<to<<std::endl;
+  //std::cout<<"Started clock from "<<from<<" to "<<to<<std::endl;
   if( done )
     m_clock_ev(*this, clock_completed);
 }

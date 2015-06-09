@@ -84,19 +84,27 @@ namespace europtus {
       void final_updated(clock::tick_type val);
       void tick_updated(clock::tick_type val);
       
+      void cfg_solver(std::string file);
       bool nddl(std::string path, std::string file);
+      
+      bool is_planning() const;
       
     private:
       EUROPA::ConstrainedVariableId restict_global(char const *name,
                                                    char const *type,
                                                    EUROPA::Domain const &base);
+      void check_planning();
+      void do_step();
+      
       EUROPA::ModuleId m_europtus;
       clock &m_clock;
       
       schema_type   m_schema;
       plan_db_type  m_plan;
       cstr_eng_type m_cstr;
+      solver_type   m_solver;
       
+      bool m_planning, m_pending;
       EUROPA::ConstrainedVariableId m_cur, m_last;
       
       pimpl();

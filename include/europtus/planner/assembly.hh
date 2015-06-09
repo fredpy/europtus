@@ -66,17 +66,26 @@ namespace europtus {
       }
       std::string const &search_path() const;
       
+      void load_solver(boost::filesystem::path cfg_file);
       bool load_nddl(boost::filesystem::path nddl_file);
+      
+      void start();
 
-      
-      
     private:
+      enum europa_priority {
+        init_p = 0,
+        tick_p = 1,
+        plan_p = 2,
+        exec_p = 3
+      };
+      
+      
       bool locate(path &p) const;
 
       
       static void send(boost::weak_ptr<pimpl> who,
                        boost::function<void (pimpl *)> fn,
-                       priority_strand::priority_type p);
+                       europa_priority p);
       static void send(boost::weak_ptr<pimpl> who,
                        boost::function<void (pimpl *)> fn);
       
@@ -101,80 +110,9 @@ namespace europtus {
       mutable std::string      m_europa_path;
 
       path_set                 m_path;
-      
+            
       friend class ModuleEuroptus;
     }; // europtus::planner::assembly
-    
-    
-  
-//    class assembly: public EUROPA::EngineBase, boost::noncopyable {
-//    public:
-//      typedef EUROPA::SchemaId           schema_type;
-//      typedef EUROPA::PlanDatabaseId     plan_db_type;
-//      typedef EUROPA::ConstraintEngineId cstr_eng_type;
-//      
-//      typedef EUROPA::SOLVERS::SolverId  solver_type;
-//      
-//      explicit assembly(clock &c);
-//      ~assembly();
-//
-//      bool add_search_path(boost::filesystem::path p);
-//      size_t add_search_path(std::string p);
-//      size_t add_search_path(char const *s) {
-//        if( NULL!=s )
-//          return add_search_path(std::string(s));
-//        return 0;
-//      }
-//      std::string const &nddl_path() const;
-//      
-//      
-//      void configure(std::string const &solver_cfg);
-//      bool load_model(boost::filesystem::path nddl_file);
-//
-//      schema_type   const &schema()      const {
-//        return m_schema;
-//      }
-//      plan_db_type  const &plan_db()     const {
-//        return m_plan;
-//      }
-//      cstr_eng_type const &cstr_engine() const {
-//        return m_cstr;
-//      }
-//      solver_type const &planner() const {
-//        return m_planner;
-//      }
-//      
-//      clock &clk() {
-//        return m_clock;
-//      }
-//      void init_clock_model();
-//      
-//    private:
-//      clock &m_clock;
-//      
-//      schema_type   m_schema;
-//      plan_db_type  m_plan;
-//      cstr_eng_type m_cstr;
-//      
-//      solver_type   m_planner;
-//      
-//      typedef std::set<boost::filesystem::path> path_set;
-//      
-//      path_set    m_path;
-//      // cache local atttribute to avoid to reggenrate the nddl
-//      // path every single time
-//      mutable bool        m_path_fresh;
-//      mutable std::string m_europa_path;
-//      
-//      bool locate(boost::filesystem::path &p) const;
-//      
-//      static boost::filesystem::path const s_europa;
-//      
-//      assembly();
-//      
-//      EUROPA::ConstrainedVariableId m_now;
-//      void update_tick(clock &c, clock::tick_type t);
-//    }; // europtus::planner::assembly
     
   } // europtus::planner
 } // europtus

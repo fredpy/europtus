@@ -34,9 +34,9 @@
 #include "Plasma.nddl"
 
 float TICK_DURATION; // duration of a tick in seconds (determined by europtus)
-int   CUR_DATE;      // update as the tick is advancing in real-time (by europtus)
-                     //   its value should remain [cur-tick, +inf)
-                     //  and it shoud be only used to compare against other time points
+int   CUR_DATE, FINAL_TICK; // update as the tick is advancing in real-time (by europtus)
+                     	    //   its value should remain [cur-tick, +inf)
+                     	    //  and it shoud be only used to compare against other time points
 
 
 class Position extends Timeline {
@@ -71,11 +71,13 @@ class AUV extends Timeline {
   float max_speed;
 
   action move {
+    start<=FINAL_TICK; 
     float speed;
     float distance;
   }
 
   action doSurvey {
+    start<=FINAL_TICK; 
     float speed;
     AUV_plan survey;
   }
@@ -100,7 +102,7 @@ AUV::move {
   float duration_sec;
 
   temporalDistance(start, duration, end);
-  duration_sec == duration * TICK_DURATION;
+  // duration_sec == duration * TICK_DURATION;
   
 
   // TODO put some constraints to compute the distance and navigation time
@@ -125,10 +127,23 @@ AUV::doSurvey {
   float duration_sec;
   temporalDistance(start,duration,end); 
 
-  duration_sec == duration * TICK_DURATION;
+  // duration_sec == duration * TICK_DURATION;
 
   survey.distance >= 0.;
   survey.distance <= duration_sec * speed;
 }
 
 AUV xtreme1 = new AUV();
+
+fact(xtreme1.pos.at initial);
+
+initial.start    = 0;
+initial.latitude = 12.5;
+initial.longitude = 32.6;
+
+rejectable(xtreme1.pos.at dest);
+
+0 <= dest.start;
+dest.start <= FINAL_TICK;
+dest.latitude = 12.8;
+dest.longitude = 32.5;
