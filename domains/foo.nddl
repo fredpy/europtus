@@ -154,5 +154,5 @@ rejectable(xtreme1.pos.at dest);
 
 0 <= dest.start;
 dest.start <= FINAL_TICK;
-dest.latitude = 12.8;
-dest.longitude = 32.5;
+dest.latitude = 12.5001;
+dest.longitude = 32.5999;

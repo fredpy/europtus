@@ -168,7 +168,7 @@ int main(int argc, char *argv[]) {
   }
   
   // TODO parse it from options
-  final = boost::posix_time::microsec_clock::universal_time()+boost::posix_time::hours(6);
+  final = boost::posix_time::microsec_clock::universal_time()+boost::posix_time::hours(1);
   std::cout<<"Final date specified for "<<final<<std::endl;
   
 

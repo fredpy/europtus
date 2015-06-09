@@ -115,8 +115,6 @@ void ll_dist_constraint::handleExecute() {
     return;
   
   EUROPA::edouble dist = WGS84::distance(lat1, lon1, 0, lat2, lon2, 0);
-  
-  //  debugMsg("trex:always", m_dist.toString() << " == " << dist << " inter " << m_dist.toString());
   intersect(m_dist, dist, dist, 0.5);
 }
 
