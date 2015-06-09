@@ -63,6 +63,7 @@ namespace {
 }
 
 int main(int argc, char *argv[]) {
+  // Use dune API to measure tick time
   typedef europtus::dune::steady_clock s_clock;
 
   // number of threads for asio (1 by default)
