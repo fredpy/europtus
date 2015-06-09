@@ -33,17 +33,21 @@
  */
 #include "Plasma.nddl"
 
-float TICK_DURATION; // duration of a tick in seconds (determined by europtus)
-int   CUR_DATE, FINAL_TICK; // update as the tick is advancing in real-time (by europtus)
-                     	    //   its value should remain [cur-tick, +inf)
-                     	    //  and it shoud be only used to compare against other time points
+// Note these variable do not need to be decalred as europtus inject them automatically
+// They are just here in case someone want to run the model in an alternate system
 
+float TICK_DURATION; // duration of a tick in seconds (determined by europtus)
+int   CUR_DATE; // update as the tick is advancing in real-time (by europtus)
+              	//   its value should remain [cur-tick, +inf)
+                //  and it shoud be only used to compare against other time points
+int   FINAL_TICK;
 
 class Position extends Timeline {
 
   predicate at {
     float latitude, longitude;
   }
+  predicate transit {}
 
   Position() {
     super();

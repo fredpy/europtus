@@ -98,9 +98,16 @@ assembly::pimpl::~pimpl() {
 // manipulators
 
 void assembly::pimpl::check_planning() {
-  
+  if( m_cstr->pending() )
+    m_cstr->propagate();
   if( m_solver.isId() ) {
-    if( m_cstr->provenInconsistent() || !m_solver->noMoreFlaws() ) {
+    //std::cout<<"OD: "<<m_solver->getOpenDecisions().size()<<std::endl;
+    //std::cout<<"Flaws:\n"<<m_solver->getDecisionStackAsString()<<std::endl;
+    
+    
+    // WTF: I cannot trust noMoreFlaws !!!!
+    if( m_cstr->provenInconsistent() || !
+       (m_solver->noMoreFlaws() && m_solver->getOpenDecisions().empty()) ) {
       if( !m_planning ) {
         std::cout<<"Started to plan."<<std::endl;
         m_planning = true;
