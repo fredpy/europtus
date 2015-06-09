@@ -18,7 +18,7 @@ The program so far depends on:
  * cmake: http://www.cmake.org
  * C++ boost libraries 1.47 or above: http://www.boost.org
  * europa-pso planner 2.6: https://github.com/nasa/europa
+ * lsts Dune library: https://github.com/LSTS/dune
  
 Expected future dependencies:
- * lsts IMC library: https://github.com/LSTS/imc
  * _(maybe)_ lsts Neptus: https://github.com/LSTS/neptus
