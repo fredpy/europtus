@@ -132,7 +132,8 @@ void assembly::pimpl::do_step() {
     // Ensure that constraints are propagated
     if( m_cstr->pending() )
       m_cstr->propagate();
-    if( m_cstr->constraintConsistent() ) {
+    if( m_cstr->constraintConsistent() &&
+        !m_cstr->provenInconsistent() ) {
       m_solver->step();
       if( m_cstr->pending() )
         m_cstr->propagate();

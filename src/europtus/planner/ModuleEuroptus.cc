@@ -34,6 +34,8 @@
 #include "europtus/planner/ModuleEuroptus.hh"
 
 #include "europtus/planner/extensions/ceil_constraint.hh"
+#include "europtus/planner/extensions/deg_to_rad.hh"
+#include "europtus/dune/ll_dist_constraint.hh"
 
 #include "private/assembly_impl.hh"
 
@@ -42,12 +44,20 @@
 
 using namespace europtus::planner;
 using namespace EUROPA;
+using europtus::dune::ll_dist_constraint;
 
 namespace {
   
   DECLARE_FUNCTION_TYPE(ceil_constraint, ceil,
                         "ceilf", EUROPA::IntDT, 1);
   
+  DECLARE_FUNCTION_TYPE(ll_dist_constraint, ll_dist, "dist_lat_lon",
+                        EUROPA::FloatDT, 4);
+  
+  DECLARE_FUNCTION_TYPE(deg_to_rad, to_rad,
+                        "deg_to_rad_f", EUROPA::FloatDT, 1);
+
+
 }
 
 /*
@@ -76,6 +86,17 @@ void ModuleEuroptus::initialize(EngineId engine) {
                       ceil_constraint,
                       "ceilf", "Default");
   ce->getCESchema()->registerCFunction((new ceil_constraintFunction())->getId());
+  
+  REGISTER_CONSTRAINT(ceSchema,
+                      ll_dist_constraint,
+                      "dist_lat_lon", "Default");
+  ce->getCESchema()->registerCFunction((new ll_dist_constraintFunction())->getId());
+
+  REGISTER_CONSTRAINT(ceSchema,
+                      deg_to_rad,
+                      "deg_to_rad_f", "Default");
+  ce->getCESchema()->registerCFunction((new deg_to_radFunction())->getId());
+
   
   std::cout<<"europtus initialized"<<std::endl;
 }

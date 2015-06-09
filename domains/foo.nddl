@@ -96,17 +96,23 @@ AUV::move {
   speed >= 0.2;
   speed <= object.max_speed;
   
-  meets(effect my_pos.at destination);
+  meets(effect my_pos.at dest);
   starts_during(condition my_pos.at source);
 
   float duration_sec, duration_f;
+  float rla_1, rlo_1, rla_2, rlo_2;
+
+  to_rad(source.latitude) == rla_1;
+  to_rad(source.longitude) == rlo_1;
+  to_rad(dest.latitude) == rla_2;
+  to_rad(dest.longitude) == rlo_2;
+
 
   temporalDistance(start, duration, end);
   ceil(duration_f) == duration;
   duration_sec == duration_f * TICK_DURATION;
-  
 
-  // TODO put some constraints to compute the distance and navigation time
+  ll_dist(rla_1, rlo_1, rla_2, rlo_2) == distance;		      
   distance <= duration_sec * speed;
   
 }

@@ -180,12 +180,14 @@ add_executable(europtus
   src/europtus/priority_strand.cc
   src/europtus/version.cc
   src/europtus/dune/clock.cc
+  src/europtus/dune/ll_dist_constraint.cc
   src/europtus/planner/assembly.cc
   src/europtus/planner/europa_protect.cc
   src/europtus/planner/exception.cc
   src/europtus/planner/ModuleEuroptus.cc
   src/europtus/private/priority_strand_impl.cc
   src/europtus/planner/extensions/ceil_constraint.cc
+  src/europtus/planner/extensions/deg_to_rad.cc
   src/europtus/planner/private/assembly_impl.cc
 
   # headers
@@ -199,12 +201,14 @@ add_executable(europtus
   include/europtus/bits/async_result.hh
   ${CMAKE_BINARY_DIR}/include/europtus/bits/version.hh
   include/europtus/dune/clock.hh
+  include/europtus/dune/ll_dist_constraint.hh
   include/europtus/planner/assembly.hh
   include/europtus/planner/europa_protect.hh
   include/europtus/planner/exception.hh
   include/europtus/planner/ModuleEuroptus.hh
   ${CMAKE_BINARY_DIR}/include/europtus/planner/bits/europa_cfg.hh
   include/europtus/planner/extensions/ceil_constraint.hh
+  include/europtus/planner/extensions/deg_to_rad.hh
   src/europtus/private/priority_strand_impl.hh
   src/europtus/planner/private/assembly_impl.hh
 
