@@ -31,55 +31,32 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-#include "europtus/planner/ModuleEuroptus.hh"
+#ifndef H_europtus_planner_extensions_ceil_constraint
+# define H_europtus_planner_extensions_ceil_constraint
 
-#include "europtus/planner/extensions/ceil_constraint.hh"
-
-#include "private/assembly_impl.hh"
-
-#include <PLASMA/CFunctions.hh>
+# include "europtus/planner/bits/europa_cfg.hh"
+# include <PLASMA/Constraint.hh>
 
 
-using namespace europtus::planner;
-using namespace EUROPA;
+namespace europtus {
+  namespace planner {
+    
+    class ceil_constraint:public EUROPA::Constraint {
+    public:
+      ceil_constraint(EUROPA::LabelStr const &name,
+                      EUROPA::LabelStr const &propagatorName,
+                      EUROPA::ConstraintEngineId const &cstr,
+                      std::vector<EUROPA::ConstrainedVariableId> const &vars);
+      ~ceil_constraint();
+      
+    private:
+      void handleExecute();
+      
+      EUROPA::Domain &m_ceil;
+      EUROPA::Domain &m_val;
+    }; // europtus::planner::ceil_constraint
+    
+  } // europtus::planner
+} // europtus
 
-namespace {
-  
-  DECLARE_FUNCTION_TYPE(ceil_constraint, ceil,
-                        "ceilf", EUROPA::IntDT, 1);
-  
-}
-
-/*
- * class europtus::planner::ModuleEuroptus
- */
-ModuleEuroptus::ModuleEuroptus(assembly::pimpl *ref)
-  :Module("Europtus"),m_assembly(ref) {}
-
-ModuleEuroptus::~ModuleEuroptus() {
-}
-
-void ModuleEuroptus::initialize() {
-  std::cout<<"europtus injected"<<std::endl;
-}
-
-void ModuleEuroptus::uninitialize() {
-  std::cout<<"europtus removed"<<std::endl;
-  m_assembly = NULL;
-}
-
-void ModuleEuroptus::initialize(EngineId engine) {
- ConstraintEngine* ce = (ConstraintEngine*)engine->getComponent("ConstraintEngine");
-  CESchema* ceSchema = (CESchema*)engine->getComponent("CESchema");
-
-  REGISTER_CONSTRAINT(ceSchema,
-                      ceil_constraint,
-                      "ceilf", "Default");
-  ce->getCESchema()->registerCFunction((new ceil_constraintFunction())->getId());
-  
-  std::cout<<"europtus initialized"<<std::endl;
-}
-
-void ModuleEuroptus::uninitialize(EngineId engine) {
-  std::cout<<"europtus disabled"<<std::endl;
-}
+#endif // H_europtus_planner_extensions_ceil_constraint

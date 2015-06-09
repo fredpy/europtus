@@ -165,6 +165,7 @@ add_executable(europtus
   src/europtus/planner/exception.cc
   src/europtus/planner/ModuleEuroptus.cc
   src/europtus/private/priority_strand_impl.cc
+  src/europtus/planner/extensions/ceil_constraint.cc
   src/europtus/planner/private/assembly_impl.cc
 
   # headers
@@ -182,6 +183,7 @@ add_executable(europtus
   include/europtus/planner/exception.hh
   include/europtus/planner/ModuleEuroptus.hh
   ${CMAKE_BINARY_DIR}/include/europtus/planner/bits/europa_cfg.hh
+  include/europtus/planner/extensions/ceil_constraint.hh
   src/europtus/private/priority_strand_impl.hh
   src/europtus/planner/private/assembly_impl.hh
 

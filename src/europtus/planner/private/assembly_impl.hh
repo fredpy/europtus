@@ -89,6 +89,10 @@ namespace europtus {
       
       bool is_planning() const;
       
+      schema_type const &schema() const {
+        return m_schema;
+      }
+      
     private:
       EUROPA::ConstrainedVariableId restict_global(char const *name,
                                                    char const *type,
@@ -108,7 +112,6 @@ namespace europtus {
       EUROPA::ConstrainedVariableId m_cur, m_last;
       
       pimpl();
-      
     }; // europtus::planner::assmebly::pimpl
     
   }

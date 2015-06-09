@@ -99,10 +99,11 @@ AUV::move {
   meets(effect my_pos.at destination);
   starts_during(condition my_pos.at source);
 
-  float duration_sec;
+  float duration_sec, duration_f;
 
   temporalDistance(start, duration, end);
-  // duration_sec == duration * TICK_DURATION;
+  ceil(duration_f) == duration;
+  duration_sec == duration_f * TICK_DURATION;
   
 
   // TODO put some constraints to compute the distance and navigation time
@@ -124,10 +125,12 @@ AUV::doSurvey {
   source.latitude == survey.source_lat;
   source.longitude == survey.source_lon;
 
-  float duration_sec;
+  float duration_sec, duration_f;
+
   temporalDistance(start,duration,end); 
 
-  // duration_sec == duration * TICK_DURATION;
+  ceil(duration_f) == duration;
+  duration_sec == duration_f * TICK_DURATION;
 
   survey.distance >= 0.;
   survey.distance <= duration_sec * speed;

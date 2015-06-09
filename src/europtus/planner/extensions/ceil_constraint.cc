@@ -31,55 +31,61 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-#include "europtus/planner/ModuleEuroptus.hh"
-
 #include "europtus/planner/extensions/ceil_constraint.hh"
-
-#include "private/assembly_impl.hh"
-
-#include <PLASMA/CFunctions.hh>
-
+#include <PLASMA/Domains.hh>
 
 using namespace europtus::planner;
-using namespace EUROPA;
-
-namespace {
-  
-  DECLARE_FUNCTION_TYPE(ceil_constraint, ceil,
-                        "ceilf", EUROPA::IntDT, 1);
-  
-}
+namespace eu=EUROPA;
 
 /*
- * class europtus::planner::ModuleEuroptus
+ * class europtus::planner::ceil_constraint
  */
-ModuleEuroptus::ModuleEuroptus(assembly::pimpl *ref)
-  :Module("Europtus"),m_assembly(ref) {}
 
-ModuleEuroptus::~ModuleEuroptus() {
+// structors
+
+ceil_constraint::ceil_constraint(eu::LabelStr const &name,
+                                 eu::LabelStr const &propagatorName,
+                                 eu::ConstraintEngineId const &cstr,
+                                 std::vector<eu::ConstrainedVariableId> const &vars)
+:eu::Constraint(name, propagatorName, cstr, vars),
+  m_ceil(getCurrentDomain(vars[0])),
+  m_val(getCurrentDomain(vars[1])) {
+  checkError(vars.size()==2, "Exactly 2 parameters required.");
 }
 
-void ModuleEuroptus::initialize() {
-  std::cout<<"europtus injected"<<std::endl;
-}
+ceil_constraint::~ceil_constraint() {}
 
-void ModuleEuroptus::uninitialize() {
-  std::cout<<"europtus removed"<<std::endl;
-  m_assembly = NULL;
-}
+// manipulators
 
-void ModuleEuroptus::initialize(EngineId engine) {
- ConstraintEngine* ce = (ConstraintEngine*)engine->getComponent("ConstraintEngine");
-  CESchema* ceSchema = (CESchema*)engine->getComponent("CESchema");
+void ceil_constraint::handleExecute() {
+  eu::edouble c_lb, c_ub, v_lb, v_ub;
 
-  REGISTER_CONSTRAINT(ceSchema,
-                      ceil_constraint,
-                      "ceilf", "Default");
-  ce->getCESchema()->registerCFunction((new ceil_constraintFunction())->getId());
+  // restrict m_ceail based on m_val
+  m_val.getBounds(v_lb, v_ub);
   
-  std::cout<<"europtus initialized"<<std::endl;
-}
+  if( v_lb<=std::numeric_limits<eu::edouble>::minus_infinity() )
+    c_lb = std::numeric_limits<eu::eint>::minus_infinity();
+  else
+    c_lb = std::ceil(v_lb);
+  if( v_ub>=std::numeric_limits<eu::edouble>::infinity() )
+    c_ub = std::numeric_limits<eu::eint>::infinity();
+  else
+    c_ub = std::ceil(v_ub);
+  
+  m_ceil.intersect(c_lb, c_ub);
+  
+  // constrain m_val based on m_ceil
+  m_ceil.getBounds(c_lb, c_ub);
+  
+  if( c_lb<=std::numeric_limits<eu::eint>::minus_infinity() )
+    v_lb = std::numeric_limits<eu::edouble>::minus_infinity();
+  else if( (c_lb-1.0)<v_lb )
+    v_lb = c_lb-1.0;
+  if( c_ub>=std::numeric_limits<eu::eint>::infinity() )
+    v_ub = std::numeric_limits<eu::edouble>::infinity();
+  else if( v_ub>c_ub )
+    v_ub = c_ub;
+  m_val.intersect(v_lb, v_ub);
 
-void ModuleEuroptus::uninitialize(EngineId engine) {
-  std::cout<<"europtus disabled"<<std::endl;
+  
 }
