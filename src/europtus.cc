@@ -200,8 +200,10 @@ int main(int argc, char *argv[]) {
   
   // Now we load the model
   try {
+    europa.set_debug("Debug.cfg");
     europa.load_solver("PlannerConfig.xml");
     europa.load_nddl(model);
+    std::cerr<<"Model loaded"<<std::endl;
     
     clock.start();
     

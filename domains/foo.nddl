@@ -33,8 +33,6 @@
  */
 #include "Plasma.nddl"
 
-// Note these variable do not need to be decalred as europtus inject them automatically
-// They are just here in case someone want to run the model in an alternate system
 
 float TICK_DURATION; // duration of a tick in seconds (determined by europtus)
 int   CUR_DATE; // update as the tick is advancing in real-time (by europtus)
@@ -54,99 +52,84 @@ class Position extends Timeline {
   }
 }
 
-class AUV_plan {
-  float source_lat, source_lon;
-  float dest_lat, dest_lon;
-  float distance;
+class Trash {
+  predicate Can{}
 
-  AUV_plan(float src_lat, float src_lon,
-	   float end_lat, float end_lon,
-	   float length) {
-    source_lat = src_lat;
-    source_lon = src_lon;
-    dest_lat = end_lat;
-    dest_lon = end_lon;
-    distance = length;
-  }
+  Trash() {}
 }
 
+class PendingDoom {
+  predicate doom {}
+
+  PendingDoom() {}
+}
+
+PendingDoom::doom {
+  if( 3 <=CUR_DATE ) {
+    starts(Trash.Can can);
+    precedes(can.end, start);
+  }
+}
+  
 class AUV extends Timeline {
-  Position pos;
+  Position    pos;
+  PendingDoom bam;
   float max_speed;
 
   action move {
     start<=FINAL_TICK; 
     float speed;
     float distance;
-  }
-
-  action doSurvey {
-    start<=FINAL_TICK; 
-    float speed;
-    AUV_plan survey;
+    speed > 0.0;
+    distance >= 0.0;
   }
 
   AUV() {
     super();
     pos = new Position();
+    bam = new PendingDoom();
     max_speed = 1.75;
   }
 }
 
 AUV::move {
-  Position my_pos;
-  my_pos == object.pos;
-  distance >= 0.0;
+  Position my_pos = object.pos;
+  PendingDoom my_doom = object.bam;
+  float max_speed = object.max_speed;
+
+  meets(effect Position.at dest);
+  starts_during(condition Position.at source);
+
+  dest.object == my_pos;
+  source.object == my_pos;
+
+  starts(condition PendingDoom.doom kaboom);
+  kaboom.object == my_doom;
+
   speed >= 0.2;
-  speed <= object.max_speed;
+  speed <= max_speed;
   
-  meets(effect my_pos.at dest);
-  starts_during(condition my_pos.at source);
-
-  float duration_sec, duration_f;
-  float rla_1, rlo_1, rla_2, rlo_2;
-
-  to_rad(source.latitude) == rla_1;
-  to_rad(source.longitude) == rlo_1;
-  to_rad(dest.latitude) == rla_2;
-  to_rad(dest.longitude) == rlo_2;
-
+  // float duration_f, duration_sec;
 
   temporalDistance(start, duration, end);
-  ceil(duration_f) == duration;
-  duration_sec == duration_f * TICK_DURATION;
-
-  ll_dist(rla_1, rlo_1, rla_2, rlo_2) == distance;		      
-  distance <= duration_sec * speed;
+  //ceil(duration_f) == duration;
+  //duration_sec == duration_f * TICK_DURATION;
   
-}
 
-AUV::doSurvey {
-  Position my_pos;
-  my_pos == object.pos;
-  speed >= 0.2;
-  speed <= object.max_speed;
+  float rla_1, rlo_1, rla_2, rlo_2;
+
+  // to_rad(source.latitude) == rla_1;
+  // to_rad(source.longitude) == rlo_1;
+  // to_rad(dest.latitude) == rla_2;
+  // to_rad(dest.longitude) == rlo_2;
   
-  meets(effect my_pos.at destination);
-  starts_during(condition my_pos.at source);
-
-  destination.latitude == survey.dest_lat;
-  destination.longitude == survey.dest_lon;
-  source.latitude == survey.source_lat;
-  source.longitude == survey.source_lon;
-
-  float duration_sec, duration_f;
-
-  temporalDistance(start,duration,end); 
-
-  ceil(duration_f) == duration;
-  duration_sec == duration_f * TICK_DURATION;
-
-  survey.distance >= 0.;
-  survey.distance <= duration_sec * speed;
+  // ll_dist(rla_1, rlo_1, rla_2, rlo_2) == distance;
+  // distance <= duration_sec * speed;
+  
 }
 
 AUV xtreme1 = new AUV();
+Trash t = new Trash();
 
 fact(xtreme1.pos.at initial);
 

@@ -53,6 +53,25 @@ if(NOT EUROPA_FOUND)
   message(FATAL_ERROR "Failed to locate Europa planner libraries")
 endif(NOT EUROPA_FOUND)    
 
+include(CheckLibraryExists)
+
+check_library_exists(dl dlopen "" LIB_DL)
+if(LIB_DL)
+set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} dl)
+else(LIB_DL)
+message(FATAL_ERROR "TREX requires lib dl")
+endif(LIB_DL)
+
+check_library_exists(pthread pthread_self "" LIB_PTHREAD)
+if(LIB_PTHREAD)
+set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} pthread)
+endif(LIB_PTHREAD)
+
+check_library_exists(rt shm_unlink "" LIB_RT)
+if(LIB_RT)
+set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} rt)
+endif(LIB_RT)
+
 
 find_package(Boost 1.47 REQUIRED COMPONENTS
   system filesystem thread date_time program_options chrono)
@@ -129,31 +148,34 @@ macro(organize_target target)
 
       # Check if header
       string(REGEX MATCH "^\\.(h|hh|hpp)$" header "${ext}")
-      if(header) 
-	if(dir)
-	  truncate_dir(h_dir ${dir} "include")
-	  string(REPLACE "/" "\\" dir "${h_dir}")
-	  source_group("Header\ Files\\${dir}" FILES ${file})
-	endif(dir)
+      if(header)
+        if(dir)
+          truncate_dir(h_dir ${dir} "include")
+          if( "${h_dir}" STREQUAL "${dir}" )
+            truncate_dir(h_dir ${dir} "src")
+          endif()
+          string(REPLACE "/" "\\" dir "${h_dir}")
+          source_group("Header\ Files\\${dir}" FILES ${file})
+        endif(dir)
       else(header)
-	string(REGEX MATCH "^\\.(c|cc|cpp)$" source "${ext}")
-	if(source) 
-	  if(dir)
-	    truncate_dir(c_dir ${dir} "src")
-	    string(REPLACE "/" "\\" dir "${c_dir}")
-	    source_group("Source\ Files\\${dir}" FILES ${file})
-	  endif(dir)
-	else(source)
-	  string(REGEX MATCH "^\\.tcc$" template "${ext}")
-	  if(template)
-	    truncate_dir(h_dir ${dir} "include")
-	    string(REPLACE "/" "\\" dir "${h_dir}")
-	    source_group("Template\ Files\\${dir}" FILES ${file})
-	  else(template)
-	    string(REPLACE "/" "\\" dir "${dir}")
-	    source_group("Other\ Files\\${dir}" FILES ${file})	  
-	  endif(template)
-	endif(source)
+        string(REGEX MATCH "^\\.(c|cc|cpp)$" source "${ext}")
+        if(source)
+          if(dir)
+            truncate_dir(c_dir ${dir} "src")
+            string(REPLACE "/" "\\" dir "${c_dir}")
+            source_group("Source\ Files\\${dir}" FILES ${file})
+          endif(dir)
+        else(source)
+          string(REGEX MATCH "^\\.tcc$" template "${ext}")
+          if(template)
+            truncate_dir(h_dir ${dir} "include")
+            string(REPLACE "/" "\\" dir "${h_dir}")
+            source_group("Template\ Files\\${dir}" FILES ${file})
+          else(template)
+            string(REPLACE "/" "\\" dir "${dir}")
+            source_group("Other\ Files\\${dir}" FILES ${file})
+          endif(template)
+        endif(source)
       endif(header)
     endif()
   endforeach(file ${src})
@@ -185,10 +207,11 @@ add_executable(europtus
   src/europtus/planner/europa_protect.cc
   src/europtus/planner/exception.cc
   src/europtus/planner/ModuleEuroptus.cc
-  src/europtus/private/priority_strand_impl.cc
   src/europtus/planner/extensions/ceil_constraint.cc
   src/europtus/planner/extensions/deg_to_rad.cc
   src/europtus/planner/private/assembly_impl.cc
+  src/europtus/planner/private/solver.cc
+  src/europtus/private/priority_strand_impl.cc
 
   # headers
   include/europtus/asio_pool.hh
@@ -211,6 +234,7 @@ add_executable(europtus
   include/europtus/planner/extensions/deg_to_rad.hh
   src/europtus/private/priority_strand_impl.hh
   src/europtus/planner/private/assembly_impl.hh
+  src/europtus/planner/private/solver.hh
 
   # template code
   include/europtus/bits/priority_strand.tcc
@@ -228,5 +252,6 @@ target_link_libraries(europtus
   ${Boost_CHRONO_LIBRARY}
   ${EUROPA_LIBRARIES}
   ${DUNE_CORE_LIB}
+${SYSTEM_LIBRARIES}
 )
   

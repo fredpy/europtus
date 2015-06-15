@@ -40,6 +40,7 @@
 # include <boost/filesystem/path.hpp>
 
 # include <set>
+# include <fstream>
 
 
 namespace europtus {
@@ -66,6 +67,7 @@ namespace europtus {
       }
       std::string const &search_path() const;
       
+      void set_debug(boost::filesystem::path cfg_file);
       void load_solver(boost::filesystem::path cfg_file);
       bool load_nddl(boost::filesystem::path nddl_file);
       
@@ -74,7 +76,7 @@ namespace europtus {
     private:
       enum europa_priority {
         init_p = 0,
-        tick_p = 1,
+        tick_p = 3,
         plan_p = 2,
         exec_p = 3
       };
@@ -110,7 +112,8 @@ namespace europtus {
       mutable std::string      m_europa_path;
 
       path_set                 m_path;
-            
+      std::ofstream            m_europa_log;
+      
       friend class ModuleEuroptus;
     }; // europtus::planner::assembly
     

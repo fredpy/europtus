@@ -105,13 +105,15 @@ void assembly::on_final(boost::weak_ptr<pimpl> who, clock &c,
 // structors
 
 assembly::assembly(asio::io_service &io, clock &c)
-:m_path_fresh(false) {
+:m_path_fresh(false), m_europa_log("europa_dbg.log") {
   prot::init(io);
   // Initialize the implementaion as a blocking call
   //   not ideal but it should work for now
   
   m_impl = prot::strand().post(boost::bind(&pimpl::create, boost::ref(c)),
                                init_p).get();
+  prot::strand().send(boost::bind(&pimpl::set_log, m_impl,
+                                  boost::ref(m_europa_log)));
   
   boost::weak_ptr<pimpl> ref(m_impl);
   clock::clock_sig::slot_type ck(&assembly::on_clock, ref, _1, _2);
@@ -170,6 +172,16 @@ bool assembly::locate(path &p) const {
 }
 
 // modifiers
+
+void assembly::set_debug(path cfg_file) {
+  cfg_file.make_preferred();
+  if( !locate(cfg_file) )
+    throw exception("Failed to locate file \""+cfg_file.string()+"\".");
+  prot::strand().post(boost::bind(&pimpl::debug_cfg, m_impl,
+                                  cfg_file.string()),
+                      init_p).get();
+}
+
 
 void assembly::load_solver(path cfg_file) {
   cfg_file.make_preferred();

@@ -1,10 +1,9 @@
 <Solver name="DefaultTestSolver">
-  <!--  FlawFilter component="HorizonFilter"
+  <!-- FlawFilter component="HorizonFilter"
        policy="PartiallyContained"/ -->
 
-  <ThreatManager defaultPriority="0">
+  <ThreatManager defaultPriority="1">
     <FlawHandler component="StandardThreatHandler"/>
-    <FlawFilter class-match="Reservoir"/>
   </ThreatManager>
 
   <OpenConditionManager defaultPriority="0">

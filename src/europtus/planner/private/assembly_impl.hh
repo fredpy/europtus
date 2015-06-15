@@ -84,6 +84,8 @@ namespace europtus {
       void final_updated(clock::tick_type val);
       void tick_updated(clock::tick_type val);
       
+      void set_log(std::ostream &log);
+      void debug_cfg(std::string file);
       void cfg_solver(std::string file);
       bool nddl(std::string path, std::string file);
       
@@ -98,6 +100,7 @@ namespace europtus {
                                                    char const *type,
                                                    EUROPA::Domain const &base);
       void check_planning();
+      void send_step();
       void do_step();
       
       EUROPA::ModuleId m_europtus;
@@ -112,6 +115,29 @@ namespace europtus {
       EUROPA::ConstrainedVariableId m_cur, m_last;
       
       pimpl();
+      
+      class token_proxy :public EUROPA::PlanDatabaseListener {
+      public:
+        token_proxy(pimpl &me);
+        ~token_proxy();
+        
+      private:
+        void notifyAdded(const EUROPA::TokenId& token);
+        void notifyRemoved(const EUROPA::TokenId& token);
+        void notifyActivated(const EUROPA::TokenId& token);
+        void notifyDeactivated(const EUROPA::TokenId& token);
+        void notifyMerged(const EUROPA::TokenId& token);
+        void notifySplit(const EUROPA::TokenId& token);
+        void notifyRejected(const EUROPA::TokenId& token);
+        void notifyReinstated(const EUROPA::TokenId& token);
+        void notifyCommitted(const EUROPA::TokenId& token);
+        void notifyTerminated(const EUROPA::TokenId& token);
+        
+        pimpl &m_self;
+      };
+      
+      boost::scoped_ptr<token_proxy> m_proxy;
+      friend class token_proxy;
     }; // europtus::planner::assmebly::pimpl
     
   }
