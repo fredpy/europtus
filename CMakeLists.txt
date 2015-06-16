@@ -92,8 +92,8 @@ if(NOT DUNE_INCLUDE_DIR)
     "Set your DUNE_HOME where dune is installed.")
 endif(NOT DUNE_INCLUDE_DIR)
 
-find_package(TREX 0.6.0 REQUIRED)
-message(STATUS "Looking for TREX>=0.6.0: ${TREX_DIR}") 
+find_package(TREX 0.6.1 REQUIRED)
+message(STATUS "Looking for TREX>=0.6.1: ${trex_VERSION}") 
 
 # Check if TREX was compiled with europa core
 list(FIND trex_extra_LIBRARIES TREXeuropa_core HAS_TREX_EUROPA)
