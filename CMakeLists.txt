@@ -94,6 +94,13 @@ endif(NOT DUNE_INCLUDE_DIR)
 
 find_package(TREX REQUIRED)
 
+# Check if TREX was compiled with europa core
+list(FIND trex_extra_LIBRARIES TREXeuropa_core HAS_TREX_EUROPA)
+
+if(${HAS_TREX_EUROPA} EQUAL -1)
+  message(FATAL_ERROR "TREX was not compiled with europa support")
+endif()
+
 
 
 include(CMakeParseArguments)
