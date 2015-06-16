@@ -19,6 +19,7 @@ The program so far depends on:
  * C++ boost libraries 1.47 or above: http://www.boost.org
  * europa-pso planner 2.6: https://github.com/nasa/europa
  * lsts Dune library: https://github.com/LSTS/dune
+ * An installed TREX v0.6.0 with europa extension: https://github.com/fredpy/trex2-agent
  
 Expected future dependencies:
  * _(maybe)_ lsts Neptus: https://github.com/LSTS/neptus
