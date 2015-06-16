@@ -42,7 +42,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake;${CMAKE_SOURCE_DIR}/cmake/Modul
 project(europtus)
 
 set(PROJECT_MAJOR 0)
-set(PROJECT_MINOR 0)
+set(PROJECT_MINOR 1)
 set(PROJECT_PATCH 0)
 
 find_package(Europa 
@@ -92,7 +92,8 @@ if(NOT DUNE_INCLUDE_DIR)
     "Set your DUNE_HOME where dune is installed.")
 endif(NOT DUNE_INCLUDE_DIR)
 
-find_package(TREX REQUIRED)
+find_package(TREX 0.6.0 REQUIRED)
+message(STATUS "Looking for TREX>=0.6.0: ${TREX_DIR}") 
 
 # Check if TREX was compiled with europa core
 list(FIND trex_extra_LIBRARIES TREXeuropa_core HAS_TREX_EUROPA)
