@@ -97,7 +97,7 @@ find_package(TREX REQUIRED)
 # Check if TREX was compiled with europa core
 list(FIND trex_extra_LIBRARIES TREXeuropa_core HAS_TREX_EUROPA)
 
-if(${HAS_TREX_EUROPA} EQUAL -1)
+if(${HAS_TREX_EUROPA} LESS 0)
   message(FATAL_ERROR "TREX was not compiled with europa support")
 endif()
 
