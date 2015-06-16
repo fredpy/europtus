@@ -69,8 +69,8 @@ assembly::pimpl::token_proxy::~token_proxy() {}
 // callbacks
 
 void assembly::pimpl::token_proxy::notifyAdded(const eu::TokenId& token) {
-  eu::TokenId master = token->master();
-  std::cerr<<"ADDED: "<<token->getPredicateName().toString()<<std::endl;
+//  eu::TokenId master = token->master();
+//  std::cerr<<"ADDED: "<<token->getPredicateName().toString()<<std::endl;
   
   // Lets cheat the system that way
 //  if( master.isNoId() ) {
@@ -81,46 +81,46 @@ void assembly::pimpl::token_proxy::notifyAdded(const eu::TokenId& token) {
 }
 
 void assembly::pimpl::token_proxy::notifyRemoved(const eu::TokenId& token) {
-  std::cerr<<"REMOVED: "<<token->getPredicateName().toString()<<std::endl;
+//  std::cerr<<"REMOVED: "<<token->getPredicateName().toString()<<std::endl;
   
 }
 
 void assembly::pimpl::token_proxy::notifyActivated(const eu::TokenId& token) {
-  std::cerr<<"ACTIVE: "<<token->getPredicateName().toString()<<std::endl;
+//  std::cerr<<"ACTIVE: "<<token->getPredicateName().toString()<<std::endl;
   
 }
 
 void assembly::pimpl::token_proxy::notifyDeactivated(const eu::TokenId& token) {
-  std::cerr<<"INACTIVE: "<<token->getPredicateName().toString()<<std::endl;
+//  std::cerr<<"INACTIVE: "<<token->getPredicateName().toString()<<std::endl;
   
 }
 
 void assembly::pimpl::token_proxy::notifyMerged(const eu::TokenId& token) {
-  std::cerr<<"MERGE: "<<token->getPredicateName().toString()<<std::endl;
+//  std::cerr<<"MERGE: "<<token->getPredicateName().toString()<<std::endl;
   
 }
 
 void assembly::pimpl::token_proxy::notifySplit(const eu::TokenId& token) {
-  std::cerr<<"SPLIT: "<<token->getPredicateName().toString()<<std::endl;
+//  std::cerr<<"SPLIT: "<<token->getPredicateName().toString()<<std::endl;
   
 }
 
 void assembly::pimpl::token_proxy::notifyRejected(const eu::TokenId& token) {
-  std::cerr<<"REJECT: "<<token->getPredicateName().toString()<<std::endl;
+//  std::cerr<<"REJECT: "<<token->getPredicateName().toString()<<std::endl;
 }
 
 void assembly::pimpl::token_proxy::notifyReinstated(const eu::TokenId& token) {
-  std::cerr<<"REINST: "<<token->getPredicateName().toString()<<std::endl;
+//  std::cerr<<"REINST: "<<token->getPredicateName().toString()<<std::endl;
   
 }
 
 void assembly::pimpl::token_proxy::notifyCommitted(const eu::TokenId& token) {
-  std::cerr<<"COMMIT: "<<token->getPredicateName().toString()<<std::endl;
+//  std::cerr<<"COMMIT: "<<token->getPredicateName().toString()<<std::endl;
   
 }
 
 void assembly::pimpl::token_proxy::notifyTerminated(const eu::TokenId& token) {
-  std::cerr<<"TERM: "<<token->getPredicateName().toString()<<std::endl;
+//  std::cerr<<"TERM: "<<token->getPredicateName().toString()<<std::endl;
   
 }
 
@@ -152,9 +152,9 @@ assembly::pimpl::pimpl(clock &c)
   addModule((new eu::ModuleSolvers())->getId());
   addModule((new eu::ModuleNddl())->getId());
   
-  // and also outr own extensions
-  // m_europtus = (new ModuleEuroptus(this))->getId();
-  // addModule(m_europtus);
+  // and also our own extensions
+  m_europtus = (new ModuleEuroptus(this))->getId();
+  addModule(m_europtus);
   
   // complete the intiialization
   doStart();
@@ -205,14 +205,7 @@ void assembly::pimpl::send_step() {
 
 
 void assembly::pimpl::check_planning() {
-//  std::cerr<<"Check planning"<<std::endl;
   bool prop_needed = true;
-//  std::cerr<<"check_planning: "<<boost::this_thread::get_id()<<std::endl;
-  
-//  std::cout<<"xCstr: pending="<<m_cstr->pending()
-//  <<", consistent="<<m_cstr->constraintConsistent()
-//  <<", inconsistent="<<m_cstr->provenInconsistent()
-//  <<", can_do="<<m_cstr->canContinuePropagation()<<std::endl;
   
   if( m_cstr->provenInconsistent() )
     prop_needed = m_cstr->canContinuePropagation();
@@ -226,7 +219,6 @@ void assembly::pimpl::check_planning() {
     if( m_cstr->provenInconsistent() || m_cstr->pending() ||
        !( m_solver->noMoreFlaws() && m_solver->getOpenDecisions().empty() ) ) {
       if( !m_planning ) {
-//        std::cerr<<"Start planning"<<std::endl;
         m_planning = true;
       }
       
@@ -241,7 +233,7 @@ void assembly::pimpl::check_planning() {
       }
     } else if( m_planning ) {
       m_planning = false;
-     std::cerr<<"End planning:\n"<<m_plan->toString()<<std::endl;
+      // TODO need to track if the plannign changed anything here
     }
   } else {
     std::cerr<<"No solver yet."<<std::endl;
@@ -249,17 +241,13 @@ void assembly::pimpl::check_planning() {
 }
 
 void assembly::pimpl::do_step() {
-//  std::cerr<<"do_step: "<<boost::this_thread::get_id()<<std::endl;
   m_pending = false;
-//  std::cout<<"cstr: pending="<<m_cstr->pending()
-//  <<", consistent="<<m_cstr->constraintConsistent()
-//  <<", inconsistent="<<m_cstr->provenInconsistent()
-//  <<", can_do="<<m_cstr->canContinuePropagation()<<std::endl;
   if( m_planning ) {
     if( m_solver->isExhausted() ) {
       std::cerr<<"Solver is exhausted (depth="<<m_solver->getDepth()
       <<", steps="<<m_solver->getStepCount()<<")"<<std::endl;
       m_planning = false;
+      // TODO I need to handle this one way ... do not know how yet
       // m_solver->reset();
     } else {
       if( m_cstr->provenInconsistent() ) {
@@ -269,18 +257,14 @@ void assembly::pimpl::do_step() {
         send_step();
       } else if( m_solver->getOpenDecisions().empty() &&
                 !m_cstr->pending() ) {
-        std::cerr<<"No more flaws"<<std::endl;
         m_planning = false;
-        std::cerr<<"Plan:\n"<<m_plan->toString()
-        <<"\n==================================================="<<std::endl;
+        // TODO need to ctrack that the planning did anything here
       } else {
         std::cerr<<m_solver->printOpenDecisions()<<std::endl;
         if( m_solver->getDepth()>0 )
           std::cerr<<"last: "<<m_solver->getLastExecutedDecision()<<std::endl;
         
         m_solver->step();
-//        std::cerr<<"step: count="<<m_solver->getStepCount()
-//                 <<", depth="<<m_solver->getDepth()<<std::endl;
         send_step();
       }
     }
@@ -365,27 +349,20 @@ void assembly::pimpl::set_log(std::ostream &log) {
 
 
 void assembly::pimpl::debug_cfg(std::string file) {
-  std::cerr<<"debug_cfg"<<std::endl;
   Error::doThrowExceptions();
   std::ifstream cfg(file.c_str());
   DebugMessage::readConfigFile(cfg);
-  std::cerr<<"~debug_cfg"<<std::endl;
 }
 
 
 void assembly::pimpl::cfg_solver(std::string file) {
-  std::cerr<<"cfg_solver"<<std::endl;
   boost::scoped_ptr<eu::TiXmlElement> xml_cfg(eu::initXml(file.c_str()));
   m_solver = (new eu_s::Solver(m_plan, *xml_cfg))->getId();
-  std::cerr<<"~cfg_solver"<<std::endl;
 }
 
 
 bool assembly::pimpl::nddl(std::string path, std::string file) {
-  // First inject the nddl search path
-  std::cerr<<"nddl"<<std::endl;
-  
-  std::cout<<"  nddl.includePath = "<<path<<std::endl;
+  // Inject my path to europa
   getLanguageInterpreter("nddl")->getEngine()->getConfig()->setProperty("nddl.includePath", path);
   
   try {
@@ -402,8 +379,6 @@ bool assembly::pimpl::nddl(std::string path, std::string file) {
     
     send_step();
     
-    
-    std::cerr<<"~nddl"<<std::endl;
     return m_cstr->constraintConsistent();
   } catch(eu::PSLanguageExceptionList &le) {
     std::ostringstream err;
@@ -438,8 +413,8 @@ void assembly::pimpl::init_clock() {
 void assembly::pimpl::final_updated(clock::tick_type final) {
   if( final<=eu::cast_basis(std::numeric_limits<eu::eint>::max()) ) {
     m_last->restrictBaseDomain(eu::IntervalIntDomain(0, final));
-    std::cout<<m_last->toLongString()
-      <<" - base:"<<m_last->baseDomain().toString()<<std::endl;
+    std::cout<<"Updated final tick to "<<final
+      <<" ("<<m_clock.to_date(final)<<')'<<std::endl;
     send_step();
   }
 }
@@ -450,7 +425,8 @@ void assembly::pimpl::tick_updated(clock::tick_type cur) {
     future(eu::eint::basis_type(cur),
            std::numeric_limits<eu::eint>::infinity());
     m_cur->restrictBaseDomain(future);
-    std::cout<<m_cur->toLongString()<<" - base: "<<m_cur->baseDomain().toString()<<std::endl;
+    std::cout<<"Updated tick to "<<cur<<" ("
+    <<m_clock.to_date(cur)<<')'<<std::endl;
     send_step();
   }
 }
