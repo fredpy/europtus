@@ -39,6 +39,7 @@
 #include <boost/tokenizer.hpp>
 
 using namespace europtus::planner;
+namespace tr=TREX::transaction;
 namespace fs=boost::filesystem;
 namespace asio=boost::asio;
 
@@ -201,6 +202,13 @@ bool assembly::load_nddl(path nddl_file) {
                                           search_path(), nddl_file.string()),
                              init_p).get();
 }
+
+void assembly::observation(tr::Goal const &obs) {
+  tr::goal_id o = MAKE_SHARED<tr::Goal>(obs);
+  prot::strand().send(boost::bind(&pimpl::add_obs, m_impl, o),
+                      exec_p);
+}
+
 
 bool assembly::add_search_path(assembly::path p) {
   if( !p.empty() ) {

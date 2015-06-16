@@ -92,6 +92,9 @@ if(NOT DUNE_INCLUDE_DIR)
     "Set your DUNE_HOME where dune is installed.")
 endif(NOT DUNE_INCLUDE_DIR)
 
+find_package(TREX REQUIRED)
+
+
 
 include(CMakeParseArguments)
 
@@ -187,7 +190,11 @@ include_directories(
   ${CMAKE_BINARY_DIR}/include # where project c++ headers will be generated
   ${Boost_INCLUDE_DIR}
   ${EUROPA_INCLUDE_DIR}
+  ${trex_INCLUDE_DIRS}
   ${DUNE_INCLUDE_DIR})
+
+add_definitions(${trex_CPPFLAGS})
+
 
 configure_file(include/europtus/bits/version.hh.in
   include/europtus/bits/version.hh)
@@ -210,7 +217,6 @@ add_executable(europtus
   src/europtus/planner/extensions/ceil_constraint.cc
   src/europtus/planner/extensions/deg_to_rad.cc
   src/europtus/planner/private/assembly_impl.cc
-  src/europtus/planner/private/solver.cc
   src/europtus/private/priority_strand_impl.cc
 
   # headers
@@ -234,7 +240,6 @@ add_executable(europtus
   include/europtus/planner/extensions/deg_to_rad.hh
   src/europtus/private/priority_strand_impl.hh
   src/europtus/planner/private/assembly_impl.hh
-  src/europtus/planner/private/solver.hh
 
   # template code
   include/europtus/bits/priority_strand.tcc
@@ -250,8 +255,10 @@ target_link_libraries(europtus
   ${Boost_THREAD_LIBRARY}
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_CHRONO_LIBRARY}
+  TREXtransaction
+  TREXeuropa_core
   ${EUROPA_LIBRARIES}
   ${DUNE_CORE_LIB}
-${SYSTEM_LIBRARIES}
+  ${SYSTEM_LIBRARIES}
 )
   

@@ -45,6 +45,7 @@
 // just ofr testing purpose
 #include "europtus/planner/europa_protect.hh"
 
+namespace tr=TREX::transaction;
 namespace po=boost::program_options;
 namespace pco=po::command_line_style;
 
@@ -209,10 +210,18 @@ int main(int argc, char *argv[]) {
     
     clock.restrict_end(final);
     
+    long long cur;
+    
     clock.tick();
     while( clock.active() ) {
       clock.sleep();
-      clock.tick();
+      cur = clock.tick();
+      if( cur==12 ) {
+        tr::Goal g("foo", "Bar");
+        g.restrictStart(tr::IntegerDomain(8, tr::IntegerDomain::plus_inf));
+        europa.observation(g);
+      }
+        
     }
     
     

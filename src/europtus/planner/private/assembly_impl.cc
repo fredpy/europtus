@@ -41,11 +41,16 @@
 #include <PLASMA/ModuleSolvers.hh>
 #include <PLASMA/ModuleNddl.hh>
 #include <PLASMA/NddlInterpreter.hh>
+#include <PLASMA/TokenVariable.hh>
 
+#include <trex/europa/bits/europa_convert.hh>
 
 
 using namespace europtus::planner;
 
+namespace tr=TREX::transaction;
+namespace tu=TREX::utils;
+namespace te=TREX::europa;
 namespace eu=EUROPA;
 namespace eu_s=eu::SOLVERS;
 
@@ -172,6 +177,22 @@ assembly::pimpl::~pimpl() {
   doShutdown();
 }
 
+// observers
+
+bool assembly::pimpl::have_predicate(eu::ObjectId const &object,
+                                     std::string &pred) const {
+  eu::LabelStr o_type = object->getType();
+  if( !schema()->isPredicate(pred.c_str()) ) {
+    std::string long_name = o_type.toString()+"."+pred;
+    if( schema()->isPredicate(long_name) ) {
+      pred = long_name;
+    } else
+      return false;
+  }
+  return schema()->canBeAssigned(o_type, pred.c_str());
+}
+
+
 // manipulators
 
 void assembly::pimpl::send_step() {
@@ -266,6 +287,60 @@ void assembly::pimpl::do_step() {
   } else
     std::cerr<<"do_step while not planning"<<std::endl;
 }
+
+
+
+
+eu::TokenId assembly::pimpl::new_token(std::string const &object,
+                                       std::string pred,
+                                       bool is_fact) {
+  eu::ObjectId obj = m_plan->getObject(object);
+  if( obj.isNoId() )
+    throw exception("Undefined object \""+object+"\"");
+  if( !have_predicate(obj, pred) )
+    throw exception("Object \""+object+"\" do not have predicate \""+pred+"\"");
+  
+  eu::DbClientId cli = m_plan->getClient();
+  eu::TokenId tok = cli->createToken(pred.c_str(), NULL, !is_fact, is_fact);
+  
+  tok->getObject()->specify(obj->getKey());
+  return tok;
+}
+
+
+void assembly::pimpl::add_obs(tr::goal_id g) {
+  try {
+    eu::TokenId obs = new_token(g->object().str(),
+                                g->predicate().str(),
+                                true);
+    if( obs.isId() ) {
+      // TODO populate all the attributes
+      std::list<tu::Symbol> attrs;
+      g->listAttributes(attrs, true);
+      for(std::list<tu::Symbol>::const_iterator i=attrs.begin();
+          attrs.end()!=i; ++i) {
+        eu::ConstrainedVariableId param = obs->getVariable(i->str());
+        if( param.isId() ) {
+          tr::Variable var = (*g)[*i];
+          try {
+            te::details::europa_restrict(param, var.domain());
+          } catch(tr::DomainExcept const &de) {
+            std::cerr<<"WARNING: "<<g->object()<<"."<<g->predicate()
+            <<" failed to constraint to "<<var<<std::endl;
+          }
+        } else
+          std::cerr<<"WARNING: "<<g->object()<<"."<<g->predicate()
+          <<" do not have attribute "<<(*i)<<std::endl;
+      }
+    }
+  } catch(exception const &e) {
+    std::cerr<<"exception while adding observation:\n"
+     <<"  - "<<*g<<'\n'
+     <<"  - "<<e.what()<<std::endl;
+  }
+}
+
+
 
 eu::ConstrainedVariableId
 assembly::pimpl::restict_global(char const *name,

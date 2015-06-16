@@ -91,6 +91,8 @@ namespace europtus {
       
       bool is_planning() const;
       
+      void add_obs(TREX::transaction::goal_id g);
+      
       schema_type const &schema() const {
         return m_schema;
       }
@@ -102,6 +104,12 @@ namespace europtus {
       void check_planning();
       void send_step();
       void do_step();
+      
+      bool have_predicate(EUROPA::ObjectId const &object,
+                          std::string &pred) const;
+      EUROPA::TokenId new_token(std::string const &object,
+                                std::string pred,
+                                bool is_fact);
       
       EUROPA::ModuleId m_europtus;
       clock &m_clock;

@@ -37,6 +37,8 @@
 # include "europtus/clock.hh"
 # include "europa_protect.hh"
 
+# include <trex/transaction/Goal.hh>
+
 # include <boost/filesystem/path.hpp>
 
 # include <set>
@@ -71,12 +73,15 @@ namespace europtus {
       void load_solver(boost::filesystem::path cfg_file);
       bool load_nddl(boost::filesystem::path nddl_file);
       
-      void start();
-
+      // void start();
+      
+      void observation(TREX::transaction::Goal const &obs);
+      
+      
     private:
       enum europa_priority {
         init_p = 0,
-        tick_p = 3,
+        tick_p = 1,
         plan_p = 2,
         exec_p = 3
       };

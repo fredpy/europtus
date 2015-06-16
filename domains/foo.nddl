@@ -128,8 +128,15 @@ AUV::move {
   
 }
 
+class Foo extends Timeline {
+      predicate Bar {}
+
+      Foo() {}
+}
+
 AUV xtreme1 = new AUV();
 Trash t = new Trash();
+Foo foo = new Foo();
 
 fact(xtreme1.pos.at initial);
 
