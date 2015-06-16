@@ -209,6 +209,13 @@ void assembly::observation(tr::Goal const &obs) {
                       exec_p);
 }
 
+void assembly::request(TREX::transaction::Goal const &req) {
+  tr::goal_id g = MAKE_SHARED<tr::Goal>(req);
+  prot::strand().send(boost::bind(&pimpl::add_goal, m_impl, g),
+                      exec_p);
+}
+
+
 
 bool assembly::add_search_path(assembly::path p) {
   if( !p.empty() ) {

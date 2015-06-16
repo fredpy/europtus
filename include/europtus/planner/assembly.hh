@@ -76,6 +76,7 @@ namespace europtus {
       // void start();
       
       void observation(TREX::transaction::Goal const &obs);
+      void request(TREX::transaction::Goal const &req);
       
       
     private:

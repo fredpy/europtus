@@ -92,6 +92,7 @@ namespace europtus {
       bool is_planning() const;
       
       void add_obs(TREX::transaction::goal_id g);
+      void add_goal(TREX::transaction::goal_id g);
       
       schema_type const &schema() const {
         return m_schema;
@@ -105,11 +106,34 @@ namespace europtus {
       void send_step();
       void do_step();
       
+      size_t m_steps, m_lost;
+      
+      void end_plan();
+      
       bool have_predicate(EUROPA::ObjectId const &object,
                           std::string &pred) const;
       EUROPA::TokenId new_token(std::string const &object,
                                 std::string pred,
                                 bool is_fact);
+      /** @brief Test if a token is a fact
+       *
+       * @param[in] tok A token
+       * @param[in] or_merged_to expand to merged tokens
+       *
+       * Test if @p tok is a fast or, if @p or_merged_to is @c true, 
+       * that it is merged to a token that is a fact.
+       *
+       * This test is useful to see igf the conditions of an executable 
+       * action are established and hence allow the token to be 
+       * dispatched.
+       *
+       * @retval true if tok is a fact (or merged to a fact with 
+       *         @p or_merged_to @c true
+       * @retval false otherwise
+       */
+      bool is_fact(EUROPA::TokenId const &tok,
+                   bool or_merged_to=true) const;
+      
       
       EUROPA::ModuleId m_europtus;
       clock &m_clock;

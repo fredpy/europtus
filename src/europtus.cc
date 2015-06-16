@@ -221,6 +221,12 @@ int main(int argc, char *argv[]) {
         g.restrictStart(tr::IntegerDomain(8, tr::IntegerDomain::plus_inf));
         europa.observation(g);
       }
+      
+      if( cur==6 ) {
+        tr::Goal g("foo", "Bar");
+        g.restrictStart(tr::IntegerDomain(4, tr::IntegerDomain::plus_inf));
+        europa.request(g);
+      }
         
     }
     

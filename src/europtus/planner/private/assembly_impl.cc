@@ -141,7 +141,7 @@ boost::filesystem::path const assembly::pimpl::s_europa(EUROPA_HOME"/include");
 // structor
 
 assembly::pimpl::pimpl(clock &c)
-  :m_clock(c),m_planning(false),m_pending(false) {
+  :m_lost(0), m_clock(c),m_planning(false),m_pending(false) {
    
   // Populate europa with desired modules
   addModule((new eu::ModuleConstraintEngine())->getId());
@@ -193,6 +193,31 @@ bool assembly::pimpl::have_predicate(eu::ObjectId const &object,
 }
 
 
+bool assembly::pimpl::is_fact(eu::TokenId const &tok,
+                             bool or_merged_to) const {
+  if( tok.isId() ) {
+    bool fact = tok->isFact();
+    
+    if( !fact && or_merged_to ) {
+      if( tok->isActive() ) {
+        eu::TokenSet merged = tok->getMergedTokens();
+        
+        for(eu::TokenSet::const_iterator m=merged.begin();
+            merged.end()!=m; ++m) {
+          if( (*m)->isFact() )
+            return true;
+        }
+      } else if( tok->isMerged() ) {
+        eu::TokenId real = tok->getActiveToken();
+        return is_fact(real);
+      }
+    }
+    return fact;
+  }
+  return false;
+}
+
+
 // manipulators
 
 void assembly::pimpl::send_step() {
@@ -220,6 +245,7 @@ void assembly::pimpl::check_planning() {
        !( m_solver->noMoreFlaws() && m_solver->getOpenDecisions().empty() ) ) {
       if( !m_planning ) {
         m_planning = true;
+        m_steps = m_solver->getStepCount()+m_lost;
       }
       
       if( !m_pending ) {
@@ -232,8 +258,7 @@ void assembly::pimpl::check_planning() {
                             assembly::plan_p);
       }
     } else if( m_planning ) {
-      m_planning = false;
-      // TODO need to track if the plannign changed anything here
+      end_plan();
     }
   } else {
     std::cerr<<"No solver yet."<<std::endl;
@@ -245,20 +270,21 @@ void assembly::pimpl::do_step() {
   if( m_planning ) {
     if( m_solver->isExhausted() ) {
       std::cerr<<"Solver is exhausted (depth="<<m_solver->getDepth()
-      <<", steps="<<m_solver->getStepCount()<<")"<<std::endl;
+      <<", steps="<<(m_solver->getStepCount()+m_lost)<<")"<<std::endl;
       m_planning = false;
       // TODO I need to handle this one way ... do not know how yet
       // m_solver->reset();
     } else {
       if( m_cstr->provenInconsistent() ) {
-        std::cerr<<"backjump"<<std::endl;
+        size_t steps = m_solver->getStepCount(), bsteps;
         m_solver->backjump(1);
-        std::cerr<<"~backjump"<<std::endl;
+        bsteps = m_solver->getStepCount();
+        if( steps>=bsteps )
+          m_lost += steps-bsteps;
         send_step();
       } else if( m_solver->getOpenDecisions().empty() &&
                 !m_cstr->pending() ) {
-        m_planning = false;
-        // TODO need to ctrack that the planning did anything here
+        end_plan();
       } else {
         std::cerr<<m_solver->printOpenDecisions()<<std::endl;
         if( m_solver->getDepth()>0 )
@@ -270,6 +296,23 @@ void assembly::pimpl::do_step() {
     }
   } else
     std::cerr<<"do_step while not planning"<<std::endl;
+}
+
+
+void assembly::pimpl::end_plan() {
+  size_t steps = m_solver->getStepCount()+m_lost;
+  
+  if( steps!=m_steps ) {
+    std::cout<<"Planning completed after "
+      <<(steps-m_steps)<<" steps:\n"
+    <<"  - steps="<<steps<<"\n"
+    <<"  - depth="<<m_solver->getDepth()<<"\n\n"
+    <<"==============================================================\n"
+    <<m_plan->toString()
+    <<"\n=============================================================="
+    <<std::endl;
+    m_steps = steps;
+  }
 }
 
 
@@ -285,7 +328,9 @@ eu::TokenId assembly::pimpl::new_token(std::string const &object,
     throw exception("Object \""+object+"\" do not have predicate \""+pred+"\"");
   
   eu::DbClientId cli = m_plan->getClient();
-  eu::TokenId tok = cli->createToken(pred.c_str(), NULL, !is_fact, is_fact);
+  eu::TokenId tok = cli->createToken(pred.c_str(), NULL,
+                                     !is_fact, // a non fact is rejectable
+                                     is_fact);
   
   tok->getObject()->specify(obj->getKey());
   return tok;
@@ -323,6 +368,62 @@ void assembly::pimpl::add_obs(tr::goal_id g) {
      <<"  - "<<e.what()<<std::endl;
   }
 }
+
+void assembly::pimpl::add_goal(tr::goal_id g) {
+  // First restrict the goal to be in the scope of planning
+  tr::IntegerDomain future;
+  clock::tick_type cur = m_clock.tick(), last = m_clock.final();
+  
+  try {
+    tr::IntegerDomain window(cur+1, last);
+
+    g->restrictStart(window);
+    
+  } catch(tr::EmptyDomain const &e) {
+    std::cerr<<"Ignore goal "<<(*g)<<":\n"
+      <<" - it cannot start between "<<(cur+1)
+      <<" ("<<m_clock.to_date(cur+1)<<") and "<<last
+      <<" ("<<m_clock.to_date(last)<<")"<<std::endl;
+    return;
+  }
+  
+  
+  try {
+    eu::TokenId req = new_token(g->object().str(),
+                                g->predicate().str(),
+                                false); // add the token as a non fact
+                                        // non facts are considered as
+                                        // rejectable goals in this code
+    if( req.isId() ) {
+      // TODO populate all the attributes
+      std::list<tu::Symbol> attrs;
+      g->listAttributes(attrs, true);
+      for(std::list<tu::Symbol>::const_iterator i=attrs.begin();
+          attrs.end()!=i; ++i) {
+        eu::ConstrainedVariableId param = req->getVariable(i->str());
+        if( param.isId() ) {
+          tr::Variable var = (*g)[*i];
+          try {
+            te::details::europa_restrict(param, var.domain());
+          } catch(tr::DomainExcept const &de) {
+            std::cerr<<"WARNING: "<<g->object()<<"."<<g->predicate()
+            <<" failed to constraint to "<<var<<std::endl;
+          }
+        } else
+          std::cerr<<"WARNING: "<<g->object()<<"."<<g->predicate()
+          <<" do not have attribute "<<(*i)<<std::endl;
+      }
+      std::cout<<"Posted goal "<<(*g)<<std::endl;
+    } else
+      std::cerr<<"Failed to create token "<<g->object()<<"."<<g->predicate()
+      <<std::endl;
+  } catch(exception const &e) {
+    std::cerr<<"exception while adding goal:\n"
+    <<"  - "<<*g<<'\n'
+    <<"  - "<<e.what()<<std::endl;
+  }
+}
+
 
 
 
