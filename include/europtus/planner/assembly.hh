@@ -37,7 +37,9 @@
 # include "europtus/clock.hh"
 # include "europa_protect.hh"
 
+# include <trex/utils/log/text_log.hh>
 # include <trex/transaction/Goal.hh>
+
 
 # include <boost/filesystem/path.hpp>
 
@@ -57,7 +59,8 @@ namespace europtus {
       typedef boost::filesystem::path path;
       
       
-      assembly(boost::asio::io_service &io, clock &c);
+      assembly(boost::asio::io_service &io, clock &c,
+               TREX::utils::log::text_log &log);
       ~assembly();
       
       bool   add_search_path(path p);

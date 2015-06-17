@@ -39,6 +39,7 @@
 #include <boost/tokenizer.hpp>
 
 using namespace europtus::planner;
+namespace tlog=TREX::utils::log;
 namespace tr=TREX::transaction;
 namespace fs=boost::filesystem;
 namespace asio=boost::asio;
@@ -105,13 +106,15 @@ void assembly::on_final(boost::weak_ptr<pimpl> who, clock &c,
 
 // structors
 
-assembly::assembly(asio::io_service &io, clock &c)
+assembly::assembly(asio::io_service &io, clock &c,
+                   tlog::text_log &log)
 :m_path_fresh(false), m_europa_log("europa_dbg.log") {
   prot::init(io);
   // Initialize the implementaion as a blocking call
   //   not ideal but it should work for now
   
-  m_impl = prot::strand().post(boost::bind(&pimpl::create, boost::ref(c)),
+  m_impl = prot::strand().post(boost::bind(&pimpl::create, boost::ref(c),
+                                           boost::ref(log)),
                                init_p).get();
   prot::strand().send(boost::bind(&pimpl::set_log, m_impl,
                                   boost::ref(m_europa_log)));

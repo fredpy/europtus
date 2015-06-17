@@ -50,6 +50,7 @@ using namespace europtus::planner;
 
 namespace tr=TREX::transaction;
 namespace tu=TREX::utils;
+namespace tlog=tu::log;
 namespace te=TREX::europa;
 namespace eu=EUROPA;
 namespace eu_s=eu::SOLVERS;
@@ -140,8 +141,9 @@ boost::filesystem::path const assembly::pimpl::s_europa(EUROPA_HOME"/include");
 
 // structor
 
-assembly::pimpl::pimpl(clock &c)
-  :m_lost(0), m_clock(c),m_planning(false),m_pending(false) {
+assembly::pimpl::pimpl(clock &c, tlog::text_log &log)
+  :m_lost(0), m_clock(c),m_planning(false),m_pending(false),
+  m_log(log) {
    
   // Populate europa with desired modules
   addModule((new eu::ModuleConstraintEngine())->getId());
@@ -220,6 +222,15 @@ bool assembly::pimpl::is_fact(eu::TokenId const &tok,
 
 // manipulators
 
+tlog::stream assembly::pimpl::log(tlog::id_type const &what) const {
+  if( m_clock.started() )
+    return m_log.msg(m_clock.tick(), tlog::null, what);
+  else
+    return m_log.msg(tlog::null, what);
+}
+
+
+
 void assembly::pimpl::send_step() {
   boost::weak_ptr<pimpl> me(shared_from_this());
   details::europa_protect::strand().send(boost::bind(&pimpl::async_exec,
@@ -238,7 +249,7 @@ void assembly::pimpl::check_planning() {
   if( prop_needed && m_cstr->pending() ) {
     bool ret = m_cstr->propagate();
     if( !ret )
-      std::cerr<<"Constraint inconsistency."<<std::endl;
+      log()<<"Constraint inconsistency.";
   }
   if( m_solver.isId() ) {
     if( m_cstr->provenInconsistent() || m_cstr->pending() ||
@@ -261,7 +272,7 @@ void assembly::pimpl::check_planning() {
       end_plan();
     }
   } else {
-    std::cerr<<"No solver yet."<<std::endl;
+    log(tlog::error)<<"No solver yet.";
   }
 }
 
@@ -269,8 +280,8 @@ void assembly::pimpl::do_step() {
   m_pending = false;
   if( m_planning ) {
     if( m_solver->isExhausted() ) {
-      std::cerr<<"Solver is exhausted (depth="<<m_solver->getDepth()
-      <<", steps="<<(m_solver->getStepCount()+m_lost)<<")"<<std::endl;
+      log(tlog::error)<<"Solver is exhausted (depth="<<m_solver->getDepth()
+      <<", steps="<<(m_solver->getStepCount()+m_lost)<<")";
       m_planning = false;
       // TODO I need to handle this one way ... do not know how yet
       // m_solver->reset();
@@ -286,16 +297,16 @@ void assembly::pimpl::do_step() {
                 !m_cstr->pending() ) {
         end_plan();
       } else {
-        std::cerr<<m_solver->printOpenDecisions()<<std::endl;
+        log()<<m_solver->printOpenDecisions()<<std::endl;
         if( m_solver->getDepth()>0 )
-          std::cerr<<"last: "<<m_solver->getLastExecutedDecision()<<std::endl;
+          log()<<"last decision: "<<m_solver->getLastExecutedDecision();
         
         m_solver->step();
         send_step();
       }
     }
   } else
-    std::cerr<<"do_step while not planning"<<std::endl;
+    log(tlog::warn)<<"do_step while not planning";
 }
 
 
@@ -303,7 +314,7 @@ void assembly::pimpl::end_plan() {
   size_t steps = m_solver->getStepCount()+m_lost;
   
   if( steps!=m_steps ) {
-    std::cout<<"Planning completed after "
+    log()<<"Planning completed after "
       <<(steps-m_steps)<<" steps:\n"
     <<"  - steps="<<steps<<"\n"
     <<"  - depth="<<m_solver->getDepth()<<"\n\n"
@@ -354,16 +365,16 @@ void assembly::pimpl::add_obs(tr::goal_id g) {
           try {
             te::details::europa_restrict(param, var.domain());
           } catch(tr::DomainExcept const &de) {
-            std::cerr<<"WARNING: "<<g->object()<<"."<<g->predicate()
+            log(tlog::warn)<<g->object()<<"."<<g->predicate()
             <<" failed to constraint to "<<var<<std::endl;
           }
         } else
-          std::cerr<<"WARNING: "<<g->object()<<"."<<g->predicate()
+          log(tlog::warn)<<g->object()<<"."<<g->predicate()
           <<" do not have attribute "<<(*i)<<std::endl;
       }
     }
   } catch(exception const &e) {
-    std::cerr<<"exception while adding observation:\n"
+    log(tlog::error)<<"exception while adding observation:\n"
      <<"  - "<<*g<<'\n'
      <<"  - "<<e.what()<<std::endl;
   }
@@ -380,7 +391,7 @@ void assembly::pimpl::add_goal(tr::goal_id g) {
     g->restrictStart(window);
     
   } catch(tr::EmptyDomain const &e) {
-    std::cerr<<"Ignore goal "<<(*g)<<":\n"
+    log(tlog::warn)<<"Ignore goal "<<(*g)<<":\n"
       <<" - it cannot start between "<<(cur+1)
       <<" ("<<m_clock.to_date(cur+1)<<") and "<<last
       <<" ("<<m_clock.to_date(last)<<")"<<std::endl;
@@ -413,12 +424,12 @@ void assembly::pimpl::add_goal(tr::goal_id g) {
           std::cerr<<"WARNING: "<<g->object()<<"."<<g->predicate()
           <<" do not have attribute "<<(*i)<<std::endl;
       }
-      std::cout<<"Posted goal "<<(*g)<<std::endl;
+      log()<<"Posted goal "<<(*g)<<std::endl;
     } else
-      std::cerr<<"Failed to create token "<<g->object()<<"."<<g->predicate()
+      log(tlog::warn)<<"Failed to create token "<<g->object()<<"."<<g->predicate()
       <<std::endl;
   } catch(exception const &e) {
-    std::cerr<<"exception while adding goal:\n"
+    log(tlog::error)<<"exception while adding goal:\n"
     <<"  - "<<*g<<'\n'
     <<"  - "<<e.what()<<std::endl;
   }
@@ -472,7 +483,7 @@ bool assembly::pimpl::nddl(std::string path, std::string file) {
     if( !ret.empty() )
       throw exception("Errors while parsing \""+file+"\":\n"+ret);
     if( !m_plan->isClosed() ) {
-      std::cerr<<"Closing plan db"<<std::endl;
+      log()<<"Closing plan db";
       m_plan->close();
     }
     if( m_cstr->pending() )
@@ -514,7 +525,7 @@ void assembly::pimpl::init_clock() {
 void assembly::pimpl::final_updated(clock::tick_type final) {
   if( final<=eu::cast_basis(std::numeric_limits<eu::eint>::max()) ) {
     m_last->restrictBaseDomain(eu::IntervalIntDomain(0, final));
-    std::cout<<"Updated final tick to "<<final
+    log()<<"Updated final tick to "<<final
       <<" ("<<m_clock.to_date(final)<<')'<<std::endl;
     send_step();
   }
@@ -526,8 +537,8 @@ void assembly::pimpl::tick_updated(clock::tick_type cur) {
     future(eu::eint::basis_type(cur),
            std::numeric_limits<eu::eint>::infinity());
     m_cur->restrictBaseDomain(future);
-    std::cout<<"Updated tick to "<<cur<<" ("
-    <<m_clock.to_date(cur)<<')'<<std::endl;
+//    std::cout<<"Updated tick to "<<cur<<" ("
+//    <<m_clock.to_date(cur)<<')'<<std::endl;
     send_step();
   }
 }

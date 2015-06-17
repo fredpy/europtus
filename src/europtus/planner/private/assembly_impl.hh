@@ -46,6 +46,8 @@
 # include <PLASMA/Solver.hh>
 # include <PLASMA/TemporalNetwork.hh>
 
+# include <trex/utils/log/text_log.hh>
+
 # include <boost/enable_shared_from_this.hpp>
 # include <boost/make_shared.hpp>
 
@@ -63,11 +65,12 @@ namespace europtus {
       typedef EUROPA::ConstraintEngineId cstr_eng_type;
       typedef EUROPA::SOLVERS::SolverId  solver_type;
       
-      static boost::shared_ptr<pimpl> create(clock &c) {
-        return boost::make_shared<pimpl>(boost::ref(c));
+      static boost::shared_ptr<pimpl> create(clock &c,
+                                             TREX::utils::log::text_log &l) {
+        return boost::make_shared<pimpl>(boost::ref(c), boost::ref(l));
       }
       
-      explicit pimpl(clock &c);
+      explicit pimpl(clock &c, TREX::utils::log::text_log &l);
       ~pimpl();
       
       static void async_exec(boost::weak_ptr<pimpl> who,
@@ -96,6 +99,11 @@ namespace europtus {
       
       schema_type const &schema() const {
         return m_schema;
+      }
+      
+      TREX::utils::log::stream log(TREX::utils::log::id_type const &what) const;
+      TREX::utils::log::stream log() const {
+        return log(TREX::utils::log::info);
       }
       
     private:
@@ -145,6 +153,7 @@ namespace europtus {
       
       bool m_planning, m_pending;
       EUROPA::ConstrainedVariableId m_cur, m_last;
+      TREX::utils::log::text_log &m_log;
       
       pimpl();
       

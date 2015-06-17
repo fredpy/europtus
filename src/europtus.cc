@@ -36,6 +36,7 @@
 #include <boost/program_options.hpp>
 #include <boost/shared_ptr.hpp>
 
+
 #include "europtus/asio_pool.hh"
 #include "europtus/dune/clock.hh"
 #include "europtus/version.hh"
@@ -45,6 +46,7 @@
 // just ofr testing purpose
 #include "europtus/planner/europa_protect.hh"
 
+namespace tlog=TREX::utils::log;
 namespace tr=TREX::transaction;
 namespace po=boost::program_options;
 namespace pco=po::command_line_style;
@@ -180,13 +182,22 @@ int main(int argc, char *argv[]) {
   // Create additional threads as specified
   europtus::asio_pool pool(1);
   pool.thread_count(threads, true);
+  tlog::text_log log(pool.service());
+  
+  SHARED_PTR<tlog::out_file> log_f = MAKE_SHARED<tlog::out_file>("europtus.log");
+  log.direct_connect(log.stranded(*log_f).track_foreign(log_f));
+  
+
   s_clock clock(freq);
+  
+  
+  // log.msg(tlog::null, tlog::info)<<"Test";
   
   europtus::planner::details::europa_protect::init(pool.service());
   
   
   // Todo: wrap europa calls into a strand
-  europtus::planner::assembly europa(pool.service(), clock);
+  europtus::planner::assembly europa(pool.service(), clock, log);
   
   // I needed assembly to do this part so this option is parsed after
   // the main inits
@@ -216,18 +227,12 @@ int main(int argc, char *argv[]) {
     while( clock.active() ) {
       clock.sleep();
       cur = clock.tick();
-      if( cur==12 ) {
-        tr::Goal g("foo", "Bar");
-        g.restrictStart(tr::IntegerDomain(8, tr::IntegerDomain::plus_inf));
-        europa.observation(g);
-      }
       
-      if( cur==6 ) {
-        tr::Goal g("foo", "Bar");
-        g.restrictStart(tr::IntegerDomain(4, tr::IntegerDomain::plus_inf));
-        europa.request(g);
+      if( cur>=15 && cur<=22 && cur%2 ) {
+        TREX::transaction::Goal obs("game", "ping");
+        obs.restrictStart(TREX::transaction::IntegerDomain(cur-(cur%3)));
+        europa.observation(obs);
       }
-        
     }
     
     
