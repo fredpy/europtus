@@ -214,6 +214,7 @@ int main(int argc, char *argv[]) {
   try {
     europa.set_debug("Debug.cfg");
     europa.load_solver("PlannerConfig.xml");
+    std::cerr<<"Loading model: "<<model<<std::endl;
     europa.load_nddl(model);
     std::cerr<<"Model loaded"<<std::endl;
     

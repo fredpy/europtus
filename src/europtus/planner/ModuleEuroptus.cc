@@ -33,32 +33,37 @@
  */
 #include "europtus/planner/ModuleEuroptus.hh"
 
-#include "europtus/planner/extensions/ceil_constraint.hh"
-#include "europtus/planner/extensions/deg_to_rad.hh"
-#include "europtus/dune/ll_dist_constraint.hh"
-
 #include "private/assembly_impl.hh"
+#include <europtus/planner/extensions/ceil_constraint.hh>
+#include <europtus/planner/extensions/deg_to_rad.hh>
+#include <trex/lsts/EuropaExtensions.hh>
 
 #include <PLASMA/CFunctions.hh>
 
 
-using namespace europtus::planner;
 using namespace EUROPA;
-using europtus::dune::ll_dist_constraint;
+
+namespace TREX {
+  namespace LSTS {
+    namespace  {
+      DECLARE_FUNCTION_TYPE(LatLonDist, ll_dist, "ll_distance", FloatDT, 4);
+    }
+  }
+}
+
+using namespace europtus::planner;
 
 namespace {
-  
-  DECLARE_FUNCTION_TYPE(ceil_constraint, ceil,
-                        "ceilf", EUROPA::IntDT, 1);
-  
-  DECLARE_FUNCTION_TYPE(ll_dist_constraint, ll_dist, "dist_lat_lon",
-                        EUROPA::FloatDT, 4);
-  
-  DECLARE_FUNCTION_TYPE(deg_to_rad, to_rad,
-                        "deg_to_rad_f", EUROPA::FloatDT, 1);
-
-
+  DECLARE_FUNCTION_TYPE(ceil_constraint, ceil, "ceilf",
+                        EUROPA::IntDT, 1);
+  DECLARE_FUNCTION_TYPE(deg_to_rad, to_rad, "deg_to_rad_f",
+                        EUROPA::FloatDT, 1);
 }
+
+namespace lsts=TREX::LSTS;
+
+
+
 
 /*
  * class europtus::planner::ModuleEuroptus
@@ -70,35 +75,31 @@ ModuleEuroptus::~ModuleEuroptus() {
 }
 
 void ModuleEuroptus::initialize() {
-  std::cout<<"europtus injected"<<std::endl;
 }
 
 void ModuleEuroptus::uninitialize() {
-  std::cout<<"europtus removed"<<std::endl;
   m_assembly = NULL;
 }
 
 void ModuleEuroptus::initialize(EngineId engine) {
  ConstraintEngine* ce = (ConstraintEngine*)engine->getComponent("ConstraintEngine");
   CESchema* ceSchema = (CESchema*)engine->getComponent("CESchema");
+  
+  REGISTER_CONSTRAINT(ceSchema, lsts::LatLonDist,
+                      "ll_distance", "Default");
+  ce->getCESchema()->registerCFunction((new lsts::LatLonDistFunction())->getId());
+
+  REGISTER_CONSTRAINT(ceSchema, lsts::LatLonDisplace,
+                      "ll_displace", "Default");
 
   REGISTER_CONSTRAINT(ceSchema,
                       ceil_constraint,
                       "ceilf", "Default");
   ce->getCESchema()->registerCFunction((new ceil_constraintFunction())->getId());
-  
-  REGISTER_CONSTRAINT(ceSchema,
-                      ll_dist_constraint,
-                      "dist_lat_lon", "Default");
-  ce->getCESchema()->registerCFunction((new ll_dist_constraintFunction())->getId());
-
   REGISTER_CONSTRAINT(ceSchema,
                       deg_to_rad,
                       "deg_to_rad_f", "Default");
   ce->getCESchema()->registerCFunction((new deg_to_radFunction())->getId());
-
-  
-  std::cout<<"europtus initialized"<<std::endl;
 }
 
 void ModuleEuroptus::uninitialize(EngineId engine) {

@@ -76,21 +76,21 @@ endif(LIB_RT)
 find_package(Boost 1.47 REQUIRED COMPONENTS
   system filesystem thread date_time program_options chrono)
 
-set(DUNE_HOME $ENV{DUNE_HOME} CACHE PATH
-  "Home for the Dune library")
+#set(DUNE_HOME $ENV{DUNE_HOME} CACHE PATH
+#  "Home for the Dune library")
+#
+#find_library(DUNE_CORE_LIB NAMES dune-core HINTS ${DUNE_HOME}/lib
+#  DOCS "Looking for dune core library")
+#if(NOT DUNE_CORE_LIB)
+#  message(SEND_ERROR "Failed to locate dune-core library\n"
+#    "Set your DUNE_HOME where dune is installed.")
+#endif(NOT DUNE_CORE_LIB)
 
-find_library(DUNE_CORE_LIB NAMES dune-core HINTS ${DUNE_HOME}/lib 
-  DOCS "Looking for dune core library")
-if(NOT DUNE_CORE_LIB)
-  message(SEND_ERROR "Failed to locate dune-core library\n"
-    "Set your DUNE_HOME where dune is installed.")
-endif(NOT DUNE_CORE_LIB)
-
-find_path(DUNE_INCLUDE_DIR "Dune/Dune.hpp" HINTS ${DUNE_HOME}/include)
-if(NOT DUNE_INCLUDE_DIR)
-  message(SEND_ERROR "Failed to locate dune headers\n"
-    "Set your DUNE_HOME where dune is installed.")
-endif(NOT DUNE_INCLUDE_DIR)
+#find_path(DUNE_INCLUDE_DIR "Dune/Dune.hpp" HINTS ${DUNE_HOME}/include)
+#if(NOT DUNE_INCLUDE_DIR)
+#  message(SEND_ERROR "Failed to locate dune headers\n"
+#    "Set your DUNE_HOME where dune is installed.")
+#endif(NOT DUNE_INCLUDE_DIR)
 
 find_package(TREX 0.6.1 REQUIRED)
 message(STATUS "Looking for TREX>=0.6.1: ${trex_VERSION}") 
@@ -100,6 +100,13 @@ list(FIND trex_extra_LIBRARIES TREXeuropa_core HAS_TREX_EUROPA)
 
 if(${HAS_TREX_EUROPA} LESS 0)
   message(FATAL_ERROR "TREX was not compiled with europa support")
+endif()
+
+# Check if TREX was compiled with europa core
+list(FIND trex_extra_LIBRARIES LSTSshared HAS_TREX_LSTS)
+
+if(${HAS_TREX_LSTS} LESS 0)
+message(FATAL_ERROR "TREX was not compiled with lsts support")
 endif()
 
 
@@ -217,7 +224,6 @@ add_executable(europtus
   src/europtus/priority_strand.cc
   src/europtus/version.cc
   src/europtus/dune/clock.cc
-  src/europtus/dune/ll_dist_constraint.cc
   src/europtus/planner/assembly.cc
   src/europtus/planner/europa_protect.cc
   src/europtus/planner/exception.cc
@@ -238,7 +244,6 @@ add_executable(europtus
   include/europtus/bits/async_result.hh
   ${CMAKE_BINARY_DIR}/include/europtus/bits/version.hh
   include/europtus/dune/clock.hh
-  include/europtus/dune/ll_dist_constraint.hh
   include/europtus/planner/assembly.hh
   include/europtus/planner/europa_protect.hh
   include/europtus/planner/exception.hh
@@ -263,7 +268,7 @@ target_link_libraries(europtus
   ${Boost_THREAD_LIBRARY}
   ${Boost_FILESYSTEM_LIBRARY}
   ${Boost_CHRONO_LIBRARY}
-  TREXtransaction
+  LSTSshared
   TREXeuropa_core
   ${EUROPA_LIBRARIES}
   ${DUNE_CORE_LIB}
