@@ -1,0 +1,165 @@
+/*********************************************************************
+ * Software License Agreement (BSD License)
+ * 
+ *  Copyright (c) 2015, Frederic Py.
+ *  All rights reserved.
+ * 
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ * 
+ *   * Redistributions of source code must retain the above copyright
+ *     notice, this list of conditions and the following disclaimer.
+ *   * Redistributions in binary form must reproduce the above
+ *     copyright notice, this list of conditions and the following
+ *     disclaimer in the documentation and/or other materials provided
+ *     with the distribution.
+ *   * Neither the name of the TREX Project nor the names of its
+ *     contributors may be used to endorse or promote products derived
+ *     from this software without specific prior written permission.
+ * 
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ *  FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ *  COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ *  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ *  BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ *  LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+ *  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ */
+#include "Plasma.nddl"
+
+
+float TICK_DURATION; // duration of a tick in seconds (determined by europtus)
+int   CUR_DATE; // update as the tick is advancing in real-time (by europtus)
+              	//   its value should remain [cur-tick, +inf)
+                //  and it shoud be only used to compare against other time points
+int   FINAL_TICK;
+
+class TREXpath {
+   float distance;
+   float entry_dx, entry_dy, exit_dx, exit_dy;
+
+   TREXpath(float dist, float adx, float ady, float zdx, float zdy) {
+     distance = dist;
+     entry_dx = adx;
+     entry_dy = ady;
+     exit_dx = zdx;
+     exit_dy = zdy;
+   }
+
+   TREXpath(float dist, float dx, float dy) {
+     distance = dist;
+     entry_dx = dx;
+     entry_dy = dy;
+     exit_dx = dx;
+     exit_dy = dy;
+   }
+}
+
+class DrifterFollow extends Timeline {
+  // TREX special tokens
+  predicate undefined {}
+  predicate Failed {}
+
+  predicate Inactive{}
+  predicate DoSurvey {
+    
+  }
+  // The goal
+  predicate Survey {
+    float center_lat, center_lon;
+    float u, v;
+    float heading;
+    TREXpath path;
+    float size;
+    // No speed applied in this model
+    u==0.0;
+    v==0.0;
+    heading==0.0;
+  }
+
+  DrifterFollow() {
+    super();
+  }
+}
+
+class SpeedControl extends Timeline {
+    float min_speed, max_speed;
+    
+    predicate Holds {
+	float speed;
+    }
+
+    SpeedControl(float mi, float ma) {
+	super();
+	min_speed = mi;
+	max_speed = ma;
+    }
+    
+}
+
+SpeedControl::Holds {
+    object.min_speed <= speed;
+    speed <= object.max_speed;
+}
+
+class AUV {
+  action exec_survey {
+      float distance;
+  }
+    
+  DrifterFollow drifter;
+  SpeedControl  speed;
+
+  AUV(float mi, float ma) {
+    drifter = new DrifterFollow();
+    speed = new SpeedControl(mi, ma);
+  }
+}
+
+AUV::exec_survey {
+    TREXpath p;
+
+    meets(effect DrifterFollow.Survey survey);
+    met_by(condition DrifterFollow.Inactive idle);
+    equals(DrifterFollow.DoSurvey exec);
+    contained_by(condition SpeedControl.Holds sp);
+
+    survey.object == object.drifter;
+    idle.object == object.drifter;
+    exec.object == object.drifter;
+    sp.object == object.speed;
+    
+    p == survey.path;
+    p.distance * survey.size == distance;
+
+    float duration_f, duration_sec;
+
+    temporalDistance(start, duration, end);
+    ceil(duration_f) == duration;
+    duration_f * TICK_DURATION == duration_sec;
+    distance <= duration_sec * sp.speed;
+}
+
+// Model instanciation
+
+// Define the lagrangian paths we use in an abstract form
+TREXpath square = new TREXpath(4.0, -0.5, 0.5);
+TREXpath square_twice = new TREXpath(8.0, -0.5, 0.5);
+
+// vehicle timelines
+
+AUV auv1 = new AUV(0.5, 1.75);
+AUV auv2 = new AUV(0.5, 1.75);
+
+rejectable(DrifterFollow.Survey survey);
+survey.start >= 0;
+survey.start <= FINAL_TICK;
+survey.size == 450.0;
+survey.path == square_twice;
+
