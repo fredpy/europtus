@@ -89,14 +89,17 @@ void imc_client::start_imc(int id, int port, clock &clk) {
   if( active() )
     throw exception("imc already connected");
   m_adapter.setTrexId(id);
-  m_adapter.bindAsynchronous(port);
+  if( !m_adapter.bind(port) ) {
+    std::cerr<<"Bind failure to "<<port<<std::endl;
+  } else
+    std::cout<<"Bound to port "<<port<<"\n\n"<<std::endl;
   m_conn = clk.on_tick().connect_extended(boost::bind(&imc_client::on_tick,
                                                       this, _1, _2, _3));
 }
 
 void imc_client::stop_imc() {
   m_conn.disconnect();
-  m_adapter.unbindAsynchronous();
+  m_adapter.unbind();
 }
 
 
@@ -105,14 +108,15 @@ void imc_client::on_tick(imc_client::conn const &c,
                          europtus::clock::tick_type tick) {
   // ensure that we won;t have mutiple calls of this concurrently
   sig2::shared_connection_block lock(c);
+  std::cout<<"Tick "<<tick<<std::endl;
 
-  if( m_conn!=c )
+  if( m_conn!=c ) {
     c.disconnect(); // remove the dangling dude
-  else {
-    UNIQ_PTR<imc::Message> msg(m_adapter.pollAsynchronous());
+  } else {
+    UNIQ_PTR<imc::Message> msg(m_adapter.poll());
     
-    if( NULL!=msg.get() ) {
-      log()<<"IMC message: Name=\""<<msg->getName()<<'\"';
+    for( ; NULL!=msg.get(); msg.reset(m_adapter.poll()) ) {
+      std::cerr<<"IMC message: Name=\""<<msg->getName()<<'\"'<<std::endl;
     }
   }
 }
