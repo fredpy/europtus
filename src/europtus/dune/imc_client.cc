@@ -32,15 +32,18 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 #include "europtus/dune/imc_client.hh"
+#include "europtus/date_handler.hh"
 
 #include <boost/signals2/shared_connection_block.hpp>
 
 using namespace europtus::dune;
 namespace tlog=TREX::utils::log;
+namespace tr=TREX::transaction;
 
 namespace asio=boost::asio;
 namespace bs=boost::system;
 namespace sig2=boost::signals2;
+namespace bpt=boost::property_tree;
 namespace imc=DUNE::IMC;
 
 
@@ -68,6 +71,17 @@ bool imc_client::active() const {
 
 tlog::stream imc_client::log(tlog::id_type const &what) const {
   return m_log.msg("imc", what);
+}
+
+
+tr::goal_id imc_client::parse_goal(clock &c,
+                                   bpt::ptree::value_type g) const {
+  // enahble parsers for date and duration on this clock
+  europtus::date_handler tk_date("date", c);
+  europtus::duration_handler tk_dur("duration", c);
+  
+  // create a new goal based on this 
+  return MAKE_SHARED<tr::Goal>(boost::ref(g));
 }
 
 

@@ -1,7 +1,7 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
  *
- *  Copyright (c) 2015, Frederic Py
+ *  Copyright (c) 2015, Frederic Py.
  *  All rights reserved.
  *
  *  Redistribution and use in source and binary forms, with or without
@@ -31,62 +31,55 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef H_europtus_dune_imc_client
-# define H_europtus_dune_imc_client
+#ifndef H_europtus_date_handler
+# define H_europtus_date_handler
 
-# include <trex/lsts/ImcAdapter.hh>
-# include <trex/utils/TimeUtils.hh>
-
-# include <boost/asio/strand.hpp>
-# include <europtus/clock.hh>
+# include "clock.hh"
+# include <trex/domain/IntegerDomain.hh>
 
 
 namespace europtus {
-  namespace dune {
+  
+  class date_handler
+  :public TREX::transaction::DomainBase::xml_factory::factory_type::producer {
     
-    class exception :public std::runtime_error {
-    public:
-      
-      
-      exception(std::string const &msg) throw()
-      :std::runtime_error(msg) {}
-      virtual ~exception() throw() {}
-      
-    }; // europtus::dune::exception
+    typedef TREX::transaction::DomainBase::xml_factory::factory_type::producer base_type;
+  public:
+    typedef clock::date_type date_type;
+    typedef clock::tick_type tick_type;
     
-    class imc_client :boost::noncopyable {
-    public:
-      imc_client(TREX::utils::log::text_log &log);
-      ~imc_client();
-      
-      bool active() const;
-      
-      // NOTE: start_imc is not thread safe. I.e multiple
-      // concurrent calls to it may result on undefined behavior
-      void start_imc(int id, int port, clock &clk);
-      void stop_imc();
-      
-    private:
-      TREX::transaction::goal_id parse_goal(clock &c,
-                                            boost::property_tree::ptree::value_type g) const;
-      
-      TREX::utils::log::stream log(TREX::utils::log::id_type const &what) const;
-      TREX::utils::log::stream log() const {
-        return log(TREX::utils::log::info);
-      }
-      
-      typedef boost::signals2::connection conn;
-      
-      void on_tick(conn const &c,
-                   clock &clk, clock::tick_type tick);
-      
-      conn                        m_conn;
-      TREX::LSTS::ImcAdapter      m_adapter;
-      TREX::utils::log::text_log &m_log;
-      
-    }; // class europtus::dune::imc_client
+    date_handler(TREX::utils::Symbol const &tag, clock const &clk);
+    ~date_handler();
     
-  } // europtus::dune
+  private:
+    typedef boost::optional<date_type> opt_date;
+    
+    base_type::result_type produce(base_type::argument_type arg) const;
+    
+    clock const &m_clock;
+  }; // europtus::date_handler
+
+  
+  class duration_handler
+  :public TREX::transaction::DomainBase::xml_factory::factory_type::producer {
+    
+    typedef TREX::transaction::DomainBase::xml_factory::factory_type::producer base_type;
+  public:
+    typedef boost::posix_time::time_duration duration_type;
+    typedef clock::tick_type                 tick_type;
+    
+    duration_handler(TREX::utils::Symbol const &tag, clock const &clk);
+    ~duration_handler();
+    
+  private:
+    typedef boost::optional<duration_type> opt_dur;
+    
+    base_type::result_type produce(base_type::argument_type arg) const;
+    
+    clock const &m_clock;
+  }; // europtus::duration_handler
+
+  
 } // europtus
 
-#endif // H_europtus_dune_imc_client
+#endif // H_europtus_date_handler
