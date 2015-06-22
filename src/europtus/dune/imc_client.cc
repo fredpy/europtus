@@ -71,7 +71,6 @@ tlog::stream imc_client::log(tlog::id_type const &what) const {
 }
 
 
-
 void imc_client::start_imc(int id, int port, clock &clk) {
   if( active() )
     throw exception("imc already connected");
@@ -99,57 +98,11 @@ void imc_client::on_tick(imc_client::conn const &c,
     UNIQ_PTR<imc::Message> msg(m_adapter.pollAsynchronous());
     
     if( NULL!=msg.get() ) {
+      log()<<"IMC message: Name=\""<<msg->getName()<<'\"';
     }
   }
 }
 
 
-
-//void imc_client::next_poll() {
-//  m_timer.expires_from_now(m_wait);
-//  m_timer.async_wait(boost::bind(&imc_client::async_poll, this, _1));
-//}
-//
-//
-//void imc_client::start_imc(int id, int port,
-//                           imc_client::duration_type const &pseudo_freq) {
-//  {
-//    mutex_type::scoped_lock lock(m_mtx);
-//    if( m_running )
-//      throw exception("imc_client already connected");
-//    m_running = true;
-//  }
-//  m_adapter.setTrexId(id);
-//  m_adapter.bindAsynchronous(port);
-//  m_wait = pseudo_freq;
-//  next_poll();
-//}
-//
-//
-//void imc_client::async_poll(bs::error_code const &ec) {
-//  if( !ec ) {
-//    // No error: I can do my things
-//    UNIQ_PTR<imc::Message> msg(m_adapter.pollAsynchronous());
-//    
-//    if( NULL!=msg.get() ) {
-//      
-//    }
-//    if( active() )
-//      next_poll();
-//  } else {
-//    stop_imc();
-//  }
-//}
-//
-//void imc_client::stop_imc() {
-//  {
-//    mutex_type::scoped_lock lock(m_mtx);
-//    if( !m_running )
-//      return;
-//    m_running = false;
-//  }
-//  m_adapter.unbindAsynchronous();
-//  m_timer.cancel();
-//}
 
 

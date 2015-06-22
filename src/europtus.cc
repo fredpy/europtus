@@ -39,6 +39,7 @@
 
 #include "europtus/asio_pool.hh"
 #include "europtus/dune/clock.hh"
+#include "europtus/dune/imc_client.hh"
 #include "europtus/version.hh"
 #include "europtus/planner/assembly.hh"
 #include "europtus/planner/exception.hh"
@@ -198,6 +199,10 @@ int main(int argc, char *argv[]) {
   
   // Todo: wrap europa calls into a strand
   europtus::planner::assembly europa(pool.service(), clock, log);
+  europtus::dune::imc_client imc(log);
+  
+  // TODO: set the proper id and port
+  // imc.start_imc(1030, 4040, clock);
   
   // I needed assembly to do this part so this option is parsed after
   // the main inits
@@ -235,7 +240,9 @@ int main(int argc, char *argv[]) {
         europa.observation(obs);
       }
     }
-    
+    // Not necessary as destruction does it but always better
+    // to leave clean
+    imc.stop_imc();
     
   } catch(europtus::planner::exception const &e) {
     std::cerr<<"planner exception:"<<e.what()<<std::endl;
