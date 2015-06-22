@@ -224,6 +224,7 @@ add_executable(europtus
   src/europtus/priority_strand.cc
   src/europtus/version.cc
   src/europtus/dune/clock.cc
+  src/europtus/dune/imc_client.cc
   src/europtus/planner/assembly.cc
   src/europtus/planner/europa_protect.cc
   src/europtus/planner/exception.cc
@@ -244,6 +245,7 @@ add_executable(europtus
   include/europtus/bits/async_result.hh
   ${CMAKE_BINARY_DIR}/include/europtus/bits/version.hh
   include/europtus/dune/clock.hh
+  include/europtus/dune/imc_client.hh
   include/europtus/planner/assembly.hh
   include/europtus/planner/europa_protect.hh
   include/europtus/planner/exception.hh
