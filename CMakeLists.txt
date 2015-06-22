@@ -45,32 +45,32 @@ set(PROJECT_MAJOR 0)
 set(PROJECT_MINOR 1)
 set(PROJECT_PATCH 0)
 
-find_package(Europa 
-  COMPONENTS PlanDatabase ConstraintEngine TemporalNetwork Utils TinyXml 
-  NDDL RulesEngine Solvers System)
+#find_package(Europa
+#  COMPONENTS PlanDatabase ConstraintEngine TemporalNetwork Utils TinyXml
+#  NDDL RulesEngine Solvers System)
+#
+#if(NOT EUROPA_FOUND)
+#  message(FATAL_ERROR "Failed to locate Europa planner libraries")
+#endif(NOT EUROPA_FOUND)
 
-if(NOT EUROPA_FOUND)
-  message(FATAL_ERROR "Failed to locate Europa planner libraries")
-endif(NOT EUROPA_FOUND)    
+#include(CheckLibraryExists)
 
-include(CheckLibraryExists)
+#check_library_exists(dl dlopen "" LIB_DL)
+#if(LIB_DL)
+#set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} dl)
+#else(LIB_DL)
+#message(FATAL_ERROR "TREX requires lib dl")
+#endif(LIB_DL)
 
-check_library_exists(dl dlopen "" LIB_DL)
-if(LIB_DL)
-set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} dl)
-else(LIB_DL)
-message(FATAL_ERROR "TREX requires lib dl")
-endif(LIB_DL)
+#check_library_exists(pthread pthread_self "" LIB_PTHREAD)
+#if(LIB_PTHREAD)
+#set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} pthread)
+#endif(LIB_PTHREAD)
 
-check_library_exists(pthread pthread_self "" LIB_PTHREAD)
-if(LIB_PTHREAD)
-set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} pthread)
-endif(LIB_PTHREAD)
-
-check_library_exists(rt shm_unlink "" LIB_RT)
-if(LIB_RT)
-set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} rt)
-endif(LIB_RT)
+#check_library_exists(rt shm_unlink "" LIB_RT)
+#if(LIB_RT)
+#set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} rt)
+#endif(LIB_RT)
 
 
 find_package(Boost 1.47 REQUIRED COMPONENTS
@@ -274,8 +274,8 @@ target_link_libraries(europtus
   ${Boost_CHRONO_LIBRARY}
   LSTSshared
   TREXeuropa_core
-  ${EUROPA_LIBRARIES}
-  ${DUNE_CORE_LIB}
-  ${SYSTEM_LIBRARIES}
+#  ${EUROPA_LIBRARIES}
+#  ${DUNE_CORE_LIB}
+#  ${SYSTEM_LIBRARIES}
 )
   
