@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
   europtus::dune::imc_client imc(log);
   
   // TODO: set the proper id and port
-  // imc.start_imc(1030, 4040, clock);
+  imc.start_imc(65432, 7030, clock);
   
   // I needed assembly to do this part so this option is parsed after
   // the main inits
