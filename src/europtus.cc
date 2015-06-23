@@ -212,12 +212,13 @@ int main(int argc, char *argv[]) {
     ("log", po::value<std::string>(&log_file)->implicit_value(log_file)->value_name("<file>"),
      "write log messages in <file>")
     ("end_date", po::value<boost::posix_time::ptime>()->value_name("<date>"),
-     "Final tick date in posix format (YYYY-MM-DDTHH:MM:SS[TZ])\n"
-     "or just time of day (HH:MM:SS[TZ])\n"
-     "with optional time being either Z or the shift (e.g. +01:00)")
+     "Final tick date in posix format (YYYY-MM-DDTHH:MM:SS[TZ]) "
+     "or just time of day (HH:MM:SS[TZ]) "
+     "with optional TZ being either Z or the shift (e.g. +01:00)")
     ("duration", po::value<boost::posix_time::time_duration>()->value_name("<duration>"),
      "Mission max duration\n"
      "If both duration and end_date are specified the shortest is taken")
+    ("daemon", "run as a daemon")
     ("help", "Produce this help message")
     ("version,v", "Print version number");
   
@@ -304,6 +305,38 @@ int main(int argc, char *argv[]) {
   }
   
   
+  if( opt_val.count("daemon") ) {
+    pid_t pid = fork();
+    if( pid<0 ) {
+      std::cerr<<"Failed to spawn the daemon process"<<std::endl;
+      exit(2);
+    }
+    if( pid>0 ) {
+      // I was the caller and can safely leave
+      exit(0);
+    }
+    
+    // I am the child and need to detach myself
+    setsid();
+    umask(0);
+    
+    // fork another time to ensure that I won;t acquire a terminal
+    if( (pid=fork()) ) {
+      if( pid>0 ) {
+        std::cout<<"Spawned dameon with pid "<<pid
+        <<"\nmessages should be logged in "<<log_file<<std::endl;
+        exit(0);
+      } else {
+        std::cerr<<"failed to spawn the dameon process (2)"<<std::endl;
+        exit(2);
+      }
+    }
+    // I should be the dameon now close all the standard io
+    close(STDIN_FILENO);
+    close(STDOUT_FILENO);
+    close(STDERR_FILENO);
+  }
+  
   
 
   /* ======================================================================== *
@@ -312,6 +345,7 @@ int main(int argc, char *argv[]) {
   
   // Create additional threads as specified
   europtus::asio_pool pool(1);
+  
   std::cout<<" - Setting number of threads to "<<threads<<std::endl;
   pool.thread_count(threads, true);
   tlog::text_log log(pool.service());
@@ -373,7 +407,10 @@ int main(int argc, char *argv[]) {
     <<" - final at "<<clock.end()<<std::endl
     <<" - duration: "<<(clock.end()-clock.epoch())<<std::endl;
     
-    
+    log.msg("clock", tlog::info)<<" - started at "<<clock.epoch()<<std::endl
+    <<" - final at "<<clock.end()<<std::endl
+    <<" - duration: "<<(clock.end()-clock.epoch())<<std::endl;
+
     long long cur;
     
     // run the clock this is what produce the ticks
@@ -388,7 +425,8 @@ int main(int argc, char *argv[]) {
     imc.stop_imc();
     
   } catch(europtus::planner::exception const &e) {
-    std::cerr<<"planner exception:"<<e.what()<<std::endl;
+    log(tlog::null, tlog::error)<<"Planner exception: "<<e.what();
+    std::cerr<<"planner exception: "<<e.what()<<std::endl;
     return 1;
   }
   
