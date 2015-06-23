@@ -1,7 +1,9 @@
 path=@CMAKE_SOURCE_DIR@/domains
 dbg_europa=Debug.cfg
+# could be just PlannerConfig.xml but full path ensure that we load the correct one
 solver_cfg=@CMAKE_SOURCE_DIR@/domains/PlannerConfig.xml
-nddl=survey.nddl
+# could be just survey.nddl but full path ensure that we load the correct one
+nddl=@CMAKE_SOURCE_DIR@/domains/survey.nddl
 
 # end at the next 6pm 
 end_date=18:00:00Z
