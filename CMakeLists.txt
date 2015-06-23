@@ -45,53 +45,11 @@ set(PROJECT_MAJOR 0)
 set(PROJECT_MINOR 1)
 set(PROJECT_PATCH 0)
 
-#find_package(Europa
-#  COMPONENTS PlanDatabase ConstraintEngine TemporalNetwork Utils TinyXml
-#  NDDL RulesEngine Solvers System)
-#
-#if(NOT EUROPA_FOUND)
-#  message(FATAL_ERROR "Failed to locate Europa planner libraries")
-#endif(NOT EUROPA_FOUND)
-
-#include(CheckLibraryExists)
-
-#check_library_exists(dl dlopen "" LIB_DL)
-#if(LIB_DL)
-#set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} dl)
-#else(LIB_DL)
-#message(FATAL_ERROR "TREX requires lib dl")
-#endif(LIB_DL)
-
-#check_library_exists(pthread pthread_self "" LIB_PTHREAD)
-#if(LIB_PTHREAD)
-#set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} pthread)
-#endif(LIB_PTHREAD)
-
-#check_library_exists(rt shm_unlink "" LIB_RT)
-#if(LIB_RT)
-#set(SYSTEM_LIBRARIES ${SYSTEM_LIBRARIES} rt)
-#endif(LIB_RT)
-
-
+# Look for boost
 find_package(Boost 1.47 REQUIRED COMPONENTS
   system filesystem thread date_time program_options chrono)
 
-#set(DUNE_HOME $ENV{DUNE_HOME} CACHE PATH
-#  "Home for the Dune library")
-#
-#find_library(DUNE_CORE_LIB NAMES dune-core HINTS ${DUNE_HOME}/lib
-#  DOCS "Looking for dune core library")
-#if(NOT DUNE_CORE_LIB)
-#  message(SEND_ERROR "Failed to locate dune-core library\n"
-#    "Set your DUNE_HOME where dune is installed.")
-#endif(NOT DUNE_CORE_LIB)
-
-#find_path(DUNE_INCLUDE_DIR "Dune/Dune.hpp" HINTS ${DUNE_HOME}/include)
-#if(NOT DUNE_INCLUDE_DIR)
-#  message(SEND_ERROR "Failed to locate dune headers\n"
-#    "Set your DUNE_HOME where dune is installed.")
-#endif(NOT DUNE_INCLUDE_DIR)
-
+# Look for trex
 find_package(TREX 0.6.1 REQUIRED)
 message(STATUS "Looking for TREX>=0.6.1: ${trex_VERSION}") 
 
@@ -100,104 +58,21 @@ list(FIND trex_extra_LIBRARIES TREXeuropa_core HAS_TREX_EUROPA)
 
 if(${HAS_TREX_EUROPA} LESS 0)
   message(FATAL_ERROR "TREX was not compiled with europa support")
+else()
+  message(STATUS "Found TREX europa extensions")
 endif()
 
 # Check if TREX was compiled with europa core
 list(FIND trex_extra_LIBRARIES LSTSshared HAS_TREX_LSTS)
 
 if(${HAS_TREX_LSTS} LESS 0)
-message(FATAL_ERROR "TREX was not compiled with lsts support")
+  message(FATAL_ERROR "TREX was not compiled with lsts support")
+else()
+  message(STATUS "Found TREX lsts extensions")
 endif()
 
-
-
 include(CMakeParseArguments)
-
-macro(truncate_dir var dir base)
-  # Make sure that dirt has one and only one trailing slash
-  string(REGEX REPLACE "//*" "/" dir "${dir}")
-  string(REGEX REPLACE "/$" "" dir "${dir}")
-  set(result "${dir}")
-
-  string(REGEX REPLACE "//*" "/" base "${base}")
-  string(REGEX REPLACE "/$" "" base "${base}")
-
-  if( dir )
-    set(xdir "${dir}/")
-    set(xbase "${base}/")
-  
-    if("${xdir}" STREQUAL "${xbase}")
-      set(result "")
-    else()
-      string(LENGTH "${xdir}" dir_len)
-      string(LENGTH "${xbase}" base_len)
-
-
-      if(dir_len GREATER ${base_len})
-	string(SUBSTRING ${xdir} 0 ${base_len} tmp)
-	if(tmp STREQUAL "${xbase}")
-	  math(EXPR len "${dir_len} - ${base_len}")
-	  string(SUBSTRING "${xdir}" ${base_len} ${len} result)
-	endif()
-      endif()
-    endif()
-  endif()
-
-  set(${var} "${result}")
-endmacro(truncate_dir)
-
-macro(organize_target target)
-  get_target_property(src ${target} SOURCES)
-       
-  foreach(file ${src})
-    if(NOT IS_DIRECTORY ${file})
-      get_filename_component(dir ${file} PATH)
-      get_filename_component(ext ${file} EXT)
-
-      if(dir)
-	truncate_dir(short_dir ${dir} ${CMAKE_CURRENT_SOURCE_DIR})
-	if(short_dir STREQUAL ${dir})
-	  truncate_dir(short_dir ${dir} ${CMAKE_CURRENT_BINARY_DIR})
-	endif()
-	set(dir "${short_dir}")	
-      endif(dir)
-      if(dir)
-      endif(dir)
-
-      # Check if header
-      string(REGEX MATCH "^\\.(h|hh|hpp)$" header "${ext}")
-      if(header)
-        if(dir)
-          truncate_dir(h_dir ${dir} "include")
-          if( "${h_dir}" STREQUAL "${dir}" )
-            truncate_dir(h_dir ${dir} "src")
-          endif()
-          string(REPLACE "/" "\\" dir "${h_dir}")
-          source_group("Header\ Files\\${dir}" FILES ${file})
-        endif(dir)
-      else(header)
-        string(REGEX MATCH "^\\.(c|cc|cpp)$" source "${ext}")
-        if(source)
-          if(dir)
-            truncate_dir(c_dir ${dir} "src")
-            string(REPLACE "/" "\\" dir "${c_dir}")
-            source_group("Source\ Files\\${dir}" FILES ${file})
-          endif(dir)
-        else(source)
-          string(REGEX MATCH "^\\.tcc$" template "${ext}")
-          if(template)
-            truncate_dir(h_dir ${dir} "include")
-            string(REPLACE "/" "\\" dir "${h_dir}")
-            source_group("Template\ Files\\${dir}" FILES ${file})
-          else(template)
-            string(REPLACE "/" "\\" dir "${dir}")
-            source_group("Other\ Files\\${dir}" FILES ${file})
-          endif(template)
-        endif(source)
-      endif(header)
-    endif()
-  endforeach(file ${src})
-endmacro(organize_target)
+include(europtus_macros)
 
 
 include_directories(
@@ -215,6 +90,8 @@ configure_file(include/europtus/bits/version.hh.in
   include/europtus/bits/version.hh)
 configure_file(include/europtus/planner/bits/europa_config.hh.in
   include/europtus/planner/bits/europa_cfg.hh)
+# A simple configuration file
+configure_file(src/europtus.ini.in europtus.ini)
 
 add_executable(europtus
   # source
@@ -274,8 +151,7 @@ target_link_libraries(europtus
   ${Boost_CHRONO_LIBRARY}
   LSTSshared
   TREXeuropa_core
-#  ${EUROPA_LIBRARIES}
-#  ${DUNE_CORE_LIB}
-#  ${SYSTEM_LIBRARIES}
-)
+  )
+
+
   
