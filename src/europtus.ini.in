@@ -7,3 +7,6 @@ nddl=survey.nddl
 end_date=18:00:00Z
 # Trick you can also say end_date=42:00:00Z to say "6pm the day after"
 # but hours are limitted to 2 digits so this trick will work only that far
+
+# max duration set to 12 hours
+duration=12:00:00

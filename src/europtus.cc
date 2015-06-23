@@ -83,64 +83,75 @@ namespace {
 }
 
 namespace boost {
-//  namespace program_options {
   
-    void validate(boost::any& v,
-                  const std::vector<std::string>& values,
-                  boost::posix_time::ptime * target_type, int) {
-      // make sure there was no previous assignment
-      po::validators::check_first_occurrence(v);
-      
-      // extract the string
-      std::string const &s = po::validators::get_single_string(values);
-      bool full = true;
-      
-      typedef boost::posix_time::time_input_facet facet;
-      
-
-      std::istringstream iss(s);
+  void validate(boost::any& v,
+                const std::vector<std::string>& values,
+                boost::posix_time::ptime * target_type, int) {
+    // make sure there was no previous assignment
+    po::validators::check_first_occurrence(v);
     
-      iss.imbue(std::locale(iss.getloc(), new facet("%Y-%m-%dT%H:%M:%S%F")));
+    // extract the string
+    std::string const &s = po::validators::get_single_string(values);
+    bool full = true;
+    
+    typedef boost::posix_time::time_input_facet facet;
+    
+    
+    std::istringstream iss(s);
+    
+    iss.imbue(std::locale(iss.getloc(), new facet("%Y-%m-%dT%H:%M:%S%F")));
+    
+    boost::posix_time::ptime date(boost::date_time::not_a_date_time),
+    today(boost::posix_time::second_clock::universal_time());
+    
+    if( (iss>>date).fail() ) {
+      full = false;
+      iss.clear();
+      iss.seekg(0);
       
-      boost::posix_time::ptime date(boost::date_time::not_a_date_time),
-        today(boost::posix_time::second_clock::universal_time());
+      // try ot check if it just specifies time with no date
+      iss.imbue(std::locale(iss.getloc(), new facet("%H:%M:%S%F")));
       
-      if( (iss>>date).fail() ) {
-        full = false;
-        iss.clear();
-        iss.seekg(0);
-        
-        // try ot check if it just specifies time with no date
-        iss.imbue(std::locale(iss.getloc(), new facet("%H:%M:%S%F")));
-        
-        if( (iss>>date).fail() )
-          throw po::validation_error(po::validation_error::invalid_option_value);
-        
-        boost::posix_time::time_duration delta = date-boost::posix_time::ptime(boost::date_time::min_date_time);
-        
-        date = boost::posix_time::ptime(today.date());
-        date += delta;
-        
-      }
-      // Now look for the time zone
-      std::string tz(iss.str().substr(iss.tellg()));
-      if( "Z"!=tz && !tz.empty() ) {
-        try {
-          date -= boost::posix_time::duration_from_string(tz);
-        } catch(boost::bad_lexical_cast const &e) {
-          throw po::validation_error(po::validation_error::invalid_option_value);
-        }
-      }
+      if( (iss>>date).fail() )
+        throw po::validation_error(po::validation_error::invalid_option_value);
       
+      boost::posix_time::time_duration delta = date-boost::posix_time::ptime(boost::date_time::min_date_time);
       
-      if( !full && date<=today )
-        // handle the case where the time specified
-        // is obvioulsy tomorrow
-        date += boost::posix_time::hours(24);
+      date = boost::posix_time::ptime(today.date());
+      date += delta;
       
-      v = boost::any(date);
     }
-//  }
+    // Now look for the time zone
+    std::string tz(iss.str().substr(iss.tellg()));
+    if( "Z"!=tz && !tz.empty() ) {
+      try {
+        date -= boost::posix_time::duration_from_string(tz);
+      } catch(boost::bad_lexical_cast const &e) {
+        throw po::validation_error(po::validation_error::invalid_option_value);
+      }
+    }
+    
+    
+    if( !full && date<=today )
+      // handle the case where the time specified
+      // is obvioulsy tomorrow
+      date += boost::posix_time::hours(24);
+    
+    v = boost::any(date);
+  }
+  
+  void validate(boost::any& v,
+                const std::vector<std::string>& values,
+                boost::posix_time::time_duration * target_type, int) {
+    // make sure there was no previous assignment
+    po::validators::check_first_occurrence(v);
+    
+    // extract the string
+    std::string const &s = po::validators::get_single_string(values);
+    
+    v = boost::posix_time::duration_from_string(s);
+  }
+
 }
 
 
@@ -201,7 +212,12 @@ int main(int argc, char *argv[]) {
     ("log", po::value<std::string>(&log_file)->implicit_value(log_file)->value_name("<file>"),
      "write log messages in <file>")
     ("end_date", po::value<boost::posix_time::ptime>()->value_name("<date>"),
-     "Final tick date in posix format")
+     "Final tick date in posix format (YYYY-MM-DDTHH:MM:SS[TZ])\n"
+     "or just time of day (HH:MM:SS[TZ])\n"
+     "with optional time being either Z or the shift (e.g. +01:00)")
+    ("duration", po::value<boost::posix_time::time_duration>()->value_name("<duration>"),
+     "Mission max duration\n"
+     "If both duration and end_date are specified the shortest is taken")
     ("help", "Produce this help message")
     ("version,v", "Print version number");
   
@@ -277,10 +293,6 @@ int main(int argc, char *argv[]) {
     std::cout<<"tick duration set to "<<cvt::to_posix(freq)<<std::endl;
   }
   
-  if( opt_val.count("end_date") ) {
-    final = opt_val["end_date"].as<boost::posix_time::ptime>();
-    std::cout<<"Final date specified for "<<final<<std::endl;
-  }
 
   boost::filesystem::path model;
   
@@ -343,7 +355,20 @@ int main(int argc, char *argv[]) {
     
     clock.start();
     
-    clock.restrict_end(final);
+    // identify final date based on options
+    if( opt_val.count("end_date") ) {
+      final = opt_val["end_date"].as<boost::posix_time::ptime>();
+      std::cout<<"Final date specified for "<<final<<std::endl;
+      clock.restrict_end(final);
+    }
+    if( opt_val.count("duration") ) {
+      boost::posix_time::time_duration dur;
+      dur = opt_val["duration"].as<boost::posix_time::time_duration>();
+      std::cout<<"Max duration specified as "<<dur<<std::endl;
+      typedef TREX::utils::chrono_posix_convert<europtus::clock::duration_type> cvt;
+      clock.restrict_final(cvt::to_chrono(dur).count()/clock.tick_duration().count());
+    }
+    // display reulting info
     std::cout<<" - started at "<<clock.epoch()<<std::endl
     <<" - final at "<<clock.end()<<std::endl
     <<" - duration: "<<(clock.end()-clock.epoch())<<std::endl;
