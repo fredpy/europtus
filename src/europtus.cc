@@ -57,13 +57,6 @@ namespace {
                               "  europtus [options] <nddl_file>\n\n"
                               "with options");
   
-  std::pair<std::string, std::string> reg_threads(std::string const &s) {
-    if( s.find("-j")==0 )
-      return std::make_pair(s.substr(1, 1), s.substr(2));
-    else
-      return std::make_pair(std::string(), std::string());
-  }
-  
   void new_imc_tok(europtus::planner::assembly &db,
                    europtus::dune::imc_client::token_type type,
                    TREX::transaction::goal_id tok) {
@@ -83,8 +76,8 @@ int main(int argc, char *argv[]) {
   // Use dune API to measure tick time
   typedef europtus::dune::steady_clock s_clock;
 
-  // number of threads for asio (1 by default)
-  size_t threads=1;
+  // number of threads for asio (2 by default)
+  size_t threads=2;
   // tick frequency info (1 second by default)
   unsigned long long hours=0, minutes=0, seconds=1, millis=0;
   
@@ -110,7 +103,7 @@ int main(int argc, char *argv[]) {
   opt.add_options()
     ("path,I", po::value< std::vector<std::string> >(),
       "add a directory to search path" )
-    ("threads,j", po::value<size_t>(&threads)->implicit_value(1),
+    ("threads", po::value<size_t>(&threads)->implicit_value(threads),
      "Set the number of threads (minimum is 1)")
     ("hours,H", po::value<unsigned long long>(&hours)->implicit_value(0),
      "Set hours in tick frequency")
@@ -130,7 +123,7 @@ int main(int argc, char *argv[]) {
   try {
     // trigger cmd line parsing
     po::store(po::command_line_parser(argc,argv).style(pco::default_style|
-						       pco::allow_long_disguise).options(cmd_line).positional(p).extra_parser(&reg_threads).run(),
+						       pco::allow_long_disguise).options(cmd_line).positional(p).run(),
 	      opt_val);
     // propagate parsing results
     po::notify(opt_val);
