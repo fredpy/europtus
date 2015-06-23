@@ -243,16 +243,12 @@ int main(int argc, char *argv[]) {
     
     long long cur;
     
+    // run the clock this is what produce the ticks
+    // which are used both to poll messages and update the plan
     clock.tick();
     while( clock.active() ) {
       clock.sleep();
       cur = clock.tick();
-      
-      if( cur>=15 && cur<=22 && cur%2 ) {
-        TREX::transaction::Goal obs("game", "ping");
-        obs.restrictStart(TREX::transaction::IntegerDomain(cur-(cur%3)));
-        europa.observation(obs);
-      }
     }
     // Not necessary as destruction does it but always better
     // to leave clean

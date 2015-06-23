@@ -194,20 +194,26 @@ void imc_client::async_poll() {
       if( imc::TrexOperation::getIdStatic()==msg->getId() ) {
         imc::TrexOperation *op(static_cast<imc::TrexOperation *>(msg.get()));
         tr::goal_id tok;
+        
+        log()<<"IMC TREX OP: "<<op->op;
 
         switch(op->op) {
           case imc::TrexOperation::OP_POST_TOKEN:
             tok = get_token(op->token.get(), false);
+            log()<<"Observation: "<<*tok;
             m_tok_sig(fact_t, tok);
             break;
           case imc::TrexOperation::OP_POST_GOAL:
             tok = get_token(op->token.get(), true);
+            log()<<"Request: "<<*tok;
             m_tok_sig(rejectable_t, tok);
             break;
           default:
             log(warn)<<"Ignoring TREX messages other than post_goal or post_token";
         }
-      }
+      } /*else
+        log()<<"Ignore IMC type "<<msg->getId();
+         */
     }
   }
 }
