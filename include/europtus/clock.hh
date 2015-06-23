@@ -80,6 +80,7 @@ namespace europtus {
     
     void      start();
     tick_type tick();
+    tick_type current() const;
     
     bool restrict_end(date_type const &date);
     bool restrict_final(tick_type tick);

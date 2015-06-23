@@ -206,19 +206,25 @@ bool assembly::load_nddl(path nddl_file) {
                              init_p).get();
 }
 
-void assembly::observation(tr::Goal const &obs) {
-  tr::goal_id o = MAKE_SHARED<tr::Goal>(obs);
+void assembly::observation(tr::goal_id o) {
   prot::strand().send(boost::bind(&pimpl::add_obs, m_impl, o),
                       exec_p);
 }
 
-void assembly::request(TREX::transaction::Goal const &req) {
-  tr::goal_id g = MAKE_SHARED<tr::Goal>(req);
+void assembly::observation(tr::Goal const &obs) {
+  tr::goal_id o = MAKE_SHARED<tr::Goal>(obs);
+  observation(o);
+}
+
+void assembly::request(tr::goal_id g) {
   prot::strand().send(boost::bind(&pimpl::add_goal, m_impl, g),
                       exec_p);
 }
 
-
+void assembly::request(tr::Goal const &req) {
+  tr::goal_id g = MAKE_SHARED<tr::Goal>(req);
+  request(g);
+}
 
 bool assembly::add_search_path(assembly::path p) {
   if( !p.empty() ) {

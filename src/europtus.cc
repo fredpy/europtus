@@ -63,6 +63,19 @@ namespace {
     else
       return std::make_pair(std::string(), std::string());
   }
+  
+  void new_imc_tok(europtus::planner::assembly &db,
+                   europtus::dune::imc_client::token_type type,
+                   TREX::transaction::goal_id tok) {
+    switch( type ) {
+      case europtus::dune::imc_client::fact_t:
+        db.observation(tok);
+        break;
+      case europtus::dune::imc_client::rejectable_t:
+        db.request(tok);
+        break;
+    }
+  }
 
 }
 
@@ -201,6 +214,7 @@ int main(int argc, char *argv[]) {
   europtus::planner::assembly europa(pool.service(), clock, log);
   europtus::dune::imc_client imc(log);
   
+  imc.on_token().connect(boost::bind(&new_imc_tok, boost::ref(europa), _1, _2));
   // TODO: set the proper id and port
   imc.start_imc(65432, 7030, clock);
   

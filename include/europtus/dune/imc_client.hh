@@ -56,6 +56,14 @@ namespace europtus {
     
     class imc_client :boost::noncopyable {
     public:
+      enum token_type {
+        fact_t,
+        rejectable_t
+      };
+      
+      typedef boost::signals2::signal<void (token_type, TREX::transaction::goal_id)> token_event;
+      
+      
       imc_client(TREX::utils::log::text_log &log);
       ~imc_client();
       
@@ -66,24 +74,33 @@ namespace europtus {
       void start_imc(int id, int port, clock &clk);
       void stop_imc();
       
-    private:
-      TREX::transaction::goal_id parse_goal(clock &c,
-                                            boost::property_tree::ptree::value_type g) const;
-      
       TREX::utils::log::stream log(TREX::utils::log::id_type const &what) const;
       TREX::utils::log::stream log() const {
-        return log(TREX::utils::log::info);
+        return log(TREX::utils::log::null);
       }
+      
+      token_event &on_token() {
+        return m_tok_sig;
+      }
+      
+    private:
+      goal_id get_token(DUNE::IMC::TrexToken *g, bool is_goal);
       
       typedef boost::signals2::connection conn;
       
       void on_tick(conn const &c,
                    clock &clk, clock::tick_type tick);
+      void async_poll();
+      
+      
+      boost::asio::strand         m_strand;
+      bool                        m_polling;
       
       conn                        m_conn;
       TREX::LSTS::ImcAdapter      m_adapter;
       TREX::utils::log::text_log &m_log;
       
+      token_event                 m_tok_sig;
     }; // class europtus::dune::imc_client
     
   } // europtus::dune

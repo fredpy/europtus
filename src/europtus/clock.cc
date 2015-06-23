@@ -188,6 +188,12 @@ clock::tick_type clock::tick() {
   return cur;
 }
 
+clock::tick_type clock::current() const {
+  mtx_lock lock(m_lock);
+  return m_cur;
+}
+
+
 void clock::sleep(ch::nanoseconds &delay, sy::error_code &ec) const {
   if( delay>=ch::nanoseconds::zero() ) {
     timespec tv;
