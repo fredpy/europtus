@@ -356,6 +356,10 @@ int main(int argc, char *argv[]) {
 
   s_clock clock(freq);
   
+  if( opt_val.count("daemon") ) {
+    log(tlog::null, tlog::info)<<"Running as dameon with pid="<<getpid()<<std::endl;
+  }
+
   
   // log.msg(tlog::null, tlog::info)<<"Test";
   

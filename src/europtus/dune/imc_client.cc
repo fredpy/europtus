@@ -72,7 +72,7 @@ namespace {
       duration_type dt = m_clk.tick_duration()*tck;
       typedef TREX::utils::chrono_posix_convert<duration_type> cvt;
       
-      typename cvt::posix_duration p_dur = cvt::to_posix(dt);
+      cvt::posix_duration p_dur = cvt::to_posix(dt);
       std::ostringstream oss;
       oss<<p_dur;
       return oss.str();
@@ -152,7 +152,7 @@ void imc_client::start_imc(int id, int port, clock &clk) {
     log(tlog::error)<<"Failed to bind to port "<<port;
     std::cerr<<"Bind failure to "<<port<<std::endl;
   } else {
-    log(tlog::error)<<"Listening to IMC using port "<<port;
+    log(tlog::info)<<"Listening to IMC using port "<<port;
     std::cout<<"Bound to port "<<port<<std::endl;
   }
   m_conn = clk.on_tick().connect_extended(boost::bind(&imc_client::on_tick,
