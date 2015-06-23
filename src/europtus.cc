@@ -55,7 +55,8 @@ namespace pco=po::command_line_style;
 
 namespace {
   po::options_description opt("Usage:\n"
-                              "  europtus [options] <nddl_file>\n\n"
+                              "  \teuroptus [options] <nddl_file>\n"
+                              "  \teuroptus @<ini_file> [options] [<nddl_file>]\n\n"
                               "with options");
   
   void new_imc_tok(europtus::planner::assembly &db,
@@ -89,6 +90,7 @@ int main(int argc, char *argv[]) {
   size_t threads=2;
   // tick frequency info (1 second by default)
   unsigned long long hours=0, minutes=0, seconds=1, millis=0;
+  unsigned imc_port=7030, imc_id=65432;
   
   // default end date (default largest possible date)
   boost::posix_time::ptime final(boost::posix_time::max_date_time);
@@ -110,21 +112,26 @@ int main(int argc, char *argv[]) {
 
   // toto add option and parser for final date
   opt.add_options()
+    ("cfg", po::value<std::string>(), "equivalent to @arg where arg is a ini"
+     " file. It allows to set options from a ini file instead of the command line.")
     ("path,I", po::value< std::vector<std::string> >(),
       "add a directory to search path" )
     ("threads", po::value<size_t>(&threads)->implicit_value(threads),
      "Set the number of threads (minimum is 1)")
-    ("hours,H", po::value<unsigned long long>(&hours)->implicit_value(0),
+    ("hours", po::value<unsigned long long>(&hours)->implicit_value(0),
      "Set hours in tick frequency")
-    ("minutes,M", po::value<unsigned long long>(&minutes)->implicit_value(0),
+    ("minutes", po::value<unsigned long long>(&minutes)->implicit_value(0),
      "Set minutes in tick frequency")
-    ("seconds,s", po::value<unsigned long long>(&seconds)->implicit_value(1),
+    ("seconds", po::value<unsigned long long>(&seconds)->implicit_value(1),
      "Set seconds in tick frequency")
-    ("ms", po::value<unsigned long long>(&millis)->implicit_value(0),
+    ("milliseconds", po::value<unsigned long long>(&millis)->implicit_value(0),
      "Set milliseconds in tick frequency")
-    ("help,h", "Produce this help message")
-    ("version,v", "Print version number")
-    ("cfg", po::value<std::string>(), "can be specified with '@name', too");
+    ("port_imc,p", po::value<unsigned>(&imc_port)->implicit_value(imc_port),
+     "Set the UDP port for IMC")
+    ("id_imc", po::value<unsigned>(&imc_id)->implicit_value(imc_id),
+     "Set the IMC id for this program")
+    ("help", "Produce this help message")
+    ("version,v", "Print version number");
   
 
   cmd_line.add(opt).add(hidden);
@@ -132,8 +139,7 @@ int main(int argc, char *argv[]) {
 
   try {
     // trigger cmd line parsing
-    po::store(po::command_line_parser(argc,argv).style(pco::default_style|
-						       pco::allow_long_disguise).options(cmd_line).positional(p).extra_parser(&at_option_parser).run(),
+    po::store(po::command_line_parser(argc,argv).style(pco::default_style|pco::allow_long_disguise).options(cmd_line).positional(p).extra_parser(&at_option_parser).run(),
 	      opt_val);
     // propagate parsing results
     po::notify(opt_val);
@@ -146,7 +152,14 @@ int main(int argc, char *argv[]) {
 
   if( opt_val.count("help") ) {
     // print help and exit
-    std::cout<<"Europa based neptus planner.\n"<<opt<<std::endl;
+    std::cout<<"Europa based neptus planner.\n"<<opt<<"\n\n"
+      <<"Note: all option names can be truncated as long as it does not result on an\n"
+      <<"      ambiguous name. For example:\n"
+      <<"        europtus -min=2 foo.nddl\n"
+      <<"      is valid while:\n"
+      <<"        europtus -mi=2 foo.nddl\n"
+      <<"      is not due to the confusion between minutes and milliseconds"
+      <<std::endl;
     exit(0);
   }
   if( opt_val.count("version") ) {
@@ -213,6 +226,7 @@ int main(int argc, char *argv[]) {
   
   // Create additional threads as specified
   europtus::asio_pool pool(1);
+  std::cout<<" - Setting number of threads to "<<threads<<std::endl;
   pool.thread_count(threads, true);
   tlog::text_log log(pool.service());
   
