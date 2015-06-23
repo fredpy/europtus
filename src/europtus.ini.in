@@ -1,3 +1,9 @@
 path=@CMAKE_SOURCE_DIR@/domains
+dbg_europa=Debug.cfg
+solver_cfg=@CMAKE_SOURCE_DIR@/domains/PlannerConfig.xml
 nddl=survey.nddl
 
+# end at the next 6pm 
+end_date=18:00:00Z
+# Trick you can also say end_date=42:00:00Z to say "6pm the day after"
+# but hours are limitted to 2 digits so this trick will work only that far

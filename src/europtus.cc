@@ -78,9 +78,71 @@ namespace {
     else
       return std::pair<std::string, std::string>();
   }
-
+  
 
 }
+
+namespace boost {
+//  namespace program_options {
+  
+    void validate(boost::any& v,
+                  const std::vector<std::string>& values,
+                  boost::posix_time::ptime * target_type, int) {
+      // make sure there was no previous assignment
+      po::validators::check_first_occurrence(v);
+      
+      // extract the string
+      std::string const &s = po::validators::get_single_string(values);
+      bool full = true;
+      
+      typedef boost::posix_time::time_input_facet facet;
+      
+
+      std::istringstream iss(s);
+    
+      iss.imbue(std::locale(iss.getloc(), new facet("%Y-%m-%dT%H:%M:%S%F")));
+      
+      boost::posix_time::ptime date(boost::date_time::not_a_date_time),
+        today(boost::posix_time::second_clock::universal_time());
+      
+      if( (iss>>date).fail() ) {
+        full = false;
+        iss.clear();
+        iss.seekg(0);
+        
+        // try ot check if it just specifies time with no date
+        iss.imbue(std::locale(iss.getloc(), new facet("%H:%M:%S%F")));
+        
+        if( (iss>>date).fail() )
+          throw po::validation_error(po::validation_error::invalid_option_value);
+        
+        boost::posix_time::time_duration delta = date-boost::posix_time::ptime(boost::date_time::min_date_time);
+        
+        date = boost::posix_time::ptime(today.date());
+        date += delta;
+        
+      }
+      // Now look for the time zone
+      std::string tz(iss.str().substr(iss.tellg()));
+      if( "Z"!=tz && !tz.empty() ) {
+        try {
+          date -= boost::posix_time::duration_from_string(tz);
+        } catch(boost::bad_lexical_cast const &e) {
+          throw po::validation_error(po::validation_error::invalid_option_value);
+        }
+      }
+      
+      
+      if( !full && date<=today )
+        // handle the case where the time specified
+        // is obvioulsy tomorrow
+        date += boost::posix_time::hours(24);
+      
+      v = boost::any(date);
+    }
+//  }
+}
+
 
 int main(int argc, char *argv[]) {
   // Use dune API to measure tick time
@@ -91,6 +153,7 @@ int main(int argc, char *argv[]) {
   // tick frequency info (1 second by default)
   unsigned long long hours=0, minutes=0, seconds=1, millis=0;
   unsigned imc_port=7030, imc_id=65432;
+  std::string europa_dbg_cfg("Debug.cfg"), europa_solver("PlannerConfig.xml"), log_file("europtus.log");
   
   // default end date (default largest possible date)
   boost::posix_time::ptime final(boost::posix_time::max_date_time);
@@ -112,24 +175,33 @@ int main(int argc, char *argv[]) {
 
   // toto add option and parser for final date
   opt.add_options()
-    ("cfg", po::value<std::string>(), "equivalent to @arg where arg is a ini"
+    ("cfg", po::value<std::string>()->value_name("<file>"), "equivalent to @<file> where <file> is a ini"
      " file. It allows to set options from a ini file instead of the command line.")
-    ("path,I", po::value< std::vector<std::string> >(),
-      "add a directory to search path" )
-    ("threads", po::value<size_t>(&threads)->implicit_value(threads),
-     "Set the number of threads (minimum is 1)")
-    ("hours", po::value<unsigned long long>(&hours)->implicit_value(0),
+    ("path,I", po::value< std::vector<std::string> >()->value_name("<dir>"),
+      "add <dir> to europa search path" )
+    ("threads", po::value<size_t>(&threads)->implicit_value(threads)->value_name("<int>"),
+     "Set the number of threads (minimum is 2)")
+    ("hours", po::value<unsigned long long>(&hours)->implicit_value(0)->value_name("<int>"),
      "Set hours in tick frequency")
-    ("minutes", po::value<unsigned long long>(&minutes)->implicit_value(0),
+    ("minutes", po::value<unsigned long long>(&minutes)->implicit_value(0)->value_name("<int>"),
      "Set minutes in tick frequency")
-    ("seconds", po::value<unsigned long long>(&seconds)->implicit_value(1),
+    ("seconds", po::value<unsigned long long>(&seconds)->implicit_value(1)->value_name("<int>"),
      "Set seconds in tick frequency")
-    ("milliseconds", po::value<unsigned long long>(&millis)->implicit_value(0),
+    ("milliseconds", po::value<unsigned long long>(&millis)->implicit_value(0)->value_name("<int>"),
      "Set milliseconds in tick frequency")
-    ("port_imc,p", po::value<unsigned>(&imc_port)->implicit_value(imc_port),
+    ("port_imc,p", po::value<unsigned>(&imc_port)->implicit_value(imc_port)->value_name("<int>"),
      "Set the UDP port for IMC")
-    ("id_imc", po::value<unsigned>(&imc_id)->implicit_value(imc_id),
+    ("id_imc", po::value<unsigned>(&imc_id)->implicit_value(imc_id)->value_name("<int>"),
      "Set the IMC id for this program")
+    ("dbg_europa", po::value<std::string>(&europa_dbg_cfg)->implicit_value(europa_dbg_cfg)->value_name("<file>"),
+     "Load europa debug information from <file>.\n"
+     "All europa log outputs from this file will be in europa_dbg.log")
+    ("solver_cfg", po::value<std::string>(&europa_solver)->implicit_value(europa_solver)->value_name("<file>"),
+     "Load europa solver configuration from <file>")
+    ("log", po::value<std::string>(&log_file)->implicit_value(log_file)->value_name("<file>"),
+     "write log messages in <file>")
+    ("end_date", po::value<boost::posix_time::ptime>()->value_name("<date>"),
+     "Final tick date in posix format")
     ("help", "Produce this help message")
     ("version,v", "Print version number");
   
@@ -170,7 +242,7 @@ int main(int argc, char *argv[]) {
 
   if( opt_val.count("cfg") ) {
     std::string cfg_name = opt_val["cfg"].as<std::string>();
-    std::cout<<"  - loading cfg \""<<cfg_name<<std::endl;
+    std::cout<<"  - loading cfg \""<<cfg_name<<'\"'<<std::endl;
     std::ifstream cfg(cfg_name.c_str());
     
     if( !cfg ) {
@@ -205,8 +277,12 @@ int main(int argc, char *argv[]) {
     std::cout<<"tick duration set to "<<cvt::to_posix(freq)<<std::endl;
   }
   
+  if( opt_val.count("end_date") ) {
+    final = opt_val["end_date"].as<boost::posix_time::ptime>();
+    std::cout<<"Final date specified for "<<final<<std::endl;
+  }
+
   boost::filesystem::path model;
-  
   
   if( !opt_val.count("nddl") ) {
     std::cerr<<"Error missing nddl file argument\n"<<opt<<std::endl;
@@ -215,9 +291,7 @@ int main(int argc, char *argv[]) {
     model = opt_val["nddl"].as<std::string>();
   }
   
-  // TODO parse it from options
-  final = boost::posix_time::microsec_clock::universal_time()+boost::posix_time::hours(1);
-  std::cout<<"Final date specified for "<<final<<std::endl;
+  
   
 
   /* ======================================================================== *
@@ -230,7 +304,7 @@ int main(int argc, char *argv[]) {
   pool.thread_count(threads, true);
   tlog::text_log log(pool.service());
   
-  SHARED_PTR<tlog::out_file> log_f = MAKE_SHARED<tlog::out_file>("europtus.log");
+  SHARED_PTR<tlog::out_file> log_f = MAKE_SHARED<tlog::out_file>(log_file);
   log.direct_connect(log.stranded(*log_f).track_foreign(log_f));
   
 
@@ -248,7 +322,7 @@ int main(int argc, char *argv[]) {
   
   imc.on_token().connect(boost::bind(&new_imc_tok, boost::ref(europa), _1, _2));
   // TODO: set the proper id and port
-  imc.start_imc(65432, 7030, clock);
+  imc.start_imc(imc_id, imc_port, clock);
   
   // I needed assembly to do this part so this option is parsed after
   // the main inits
@@ -263,15 +337,17 @@ int main(int argc, char *argv[]) {
   
   // Now we load the model
   try {
-    europa.set_debug("Debug.cfg");
-    europa.load_solver("PlannerConfig.xml");
-    std::cerr<<"Loading model: "<<model<<std::endl;
+    europa.set_debug(europa_dbg_cfg);
+    europa.load_solver(europa_solver);
     europa.load_nddl(model);
-    std::cerr<<"Model loaded"<<std::endl;
     
     clock.start();
     
     clock.restrict_end(final);
+    std::cout<<" - started at "<<clock.epoch()<<std::endl
+    <<" - final at "<<clock.end()<<std::endl
+    <<" - duration: "<<(clock.end()-clock.epoch())<<std::endl;
+    
     
     long long cur;
     
