@@ -32,6 +32,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 #include <iostream>
+#include <vector>
 
 #include <boost/program_options.hpp>
 #include <boost/shared_ptr.hpp>
@@ -69,6 +70,14 @@ namespace {
         break;
     }
   }
+  
+  std::pair<std::string, std::string> at_option_parser(std::string const&s) {
+    if ('@' == s[0])
+      return std::make_pair(std::string("cfg"), s.substr(1));
+    else
+      return std::pair<std::string, std::string>();
+  }
+
 
 }
 
@@ -114,7 +123,8 @@ int main(int argc, char *argv[]) {
     ("ms", po::value<unsigned long long>(&millis)->implicit_value(0),
      "Set milliseconds in tick frequency")
     ("help,h", "Produce this help message")
-    ("version,v", "Print version number");
+    ("version,v", "Print version number")
+    ("cfg", po::value<std::string>(), "can be specified with '@name', too");
   
 
   cmd_line.add(opt).add(hidden);
@@ -123,7 +133,7 @@ int main(int argc, char *argv[]) {
   try {
     // trigger cmd line parsing
     po::store(po::command_line_parser(argc,argv).style(pco::default_style|
-						       pco::allow_long_disguise).options(cmd_line).positional(p).run(),
+						       pco::allow_long_disguise).options(cmd_line).positional(p).extra_parser(&at_option_parser).run(),
 	      opt_val);
     // propagate parsing results
     po::notify(opt_val);
@@ -132,6 +142,7 @@ int main(int argc, char *argv[]) {
     std::cerr<<"Command line error: "<<cmd_except.what()<<'\n'<<opt<<std::endl;
     exit(1);
   }
+  
 
   if( opt_val.count("help") ) {
     // print help and exit
@@ -143,7 +154,43 @@ int main(int argc, char *argv[]) {
     std::cout<<"Europtus version "<<europtus::version::str()<<std::endl;
     exit(0);
   }
+
+  if( opt_val.count("cfg") ) {
+    std::string cfg_name = opt_val["cfg"].as<std::string>();
+    std::cout<<"  - loading cfg \""<<cfg_name<<std::endl;
+    std::ifstream cfg(cfg_name.c_str());
+    
+    if( !cfg ) {
+      std::cerr<<"Failed to open file \""<<cfg_name<<"\""<<std::endl;
+      exit(1);
+    }
+    
+    po::store(po::parse_config_file(cfg, cmd_line), opt_val);
+    po::notify(opt_val);
+  }
   
+  
+//  if( opt_val.count("cfg") ) {
+//    std::cout<<"Load cfg \""<<opt_val["cfg"].as<std::string>()<<"\""<<std::endl;
+//    // I have  config file: load it and parse it
+//    std::ifstream cfg(opt_val["cfg"].as<std::string>().c_str());
+//    if( !cfg ) {
+//      std::cerr<<"Unable to read cfg file \""<<opt_val["cfg"].as<std::string>()
+//      <<std::endl;
+//      exit(1);
+//    }
+//    std::stringstream ss;
+//    ss<<cfg.rdbuf();
+//    boost::char_separator<char> sep("\n\r");
+//    std::string content(ss.str());
+//    boost::tokenizer< boost::char_separator<char> > tok(content, sep);
+//    std::vector<std::string> args;
+//    std::copy(tok.begin(), tok.end(), std::back_inserter(args));
+//    po::store(po::command_line_parser(args).options(cmd_line).options(hidden).run(),
+//              opt_val);
+//    po::notify(opt_val);
+//  }
+
   // identify tick frequency from options
   if( opt_val.count("hours") || opt_val.count("minutes") || opt_val.count("ms") ) {
     // special case where any other otpions is set but not seconds
@@ -218,6 +265,7 @@ int main(int argc, char *argv[]) {
     std::vector<std::string> const &incs = opt_val["path"].as< std::vector<std::string> >();
     for(std::vector<std::string>::const_iterator i=incs.begin();
         incs.end()!=i; ++i) {
+      std::cout<<"Add path: \""<<*i<<"\""<<std::endl;
       europa.add_search_path(*i);
     }
   }

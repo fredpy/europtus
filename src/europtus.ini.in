@@ -1,5 +1,5 @@
-path = @CMAKE_SOURCE_DIR@/domains
-threads = 2
-seconds = 1
-nddl = survey.nddl
+path=@CMAKE_SOURCE_DIR@/domains
+threads=2
+seconds=1
+nddl=survey.nddl
 
