@@ -103,5 +103,4 @@ void ModuleEuroptus::initialize(EngineId engine) {
 }
 
 void ModuleEuroptus::uninitialize(EngineId engine) {
-  std::cout<<"europtus disabled"<<std::endl;
 }

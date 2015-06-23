@@ -58,7 +58,6 @@ void europa_protect::make_instance(asio::io_service &io) {
   if( !s_instance ) {
     boost::upgrade_to_unique_lock<mutex_type> write(lock);
     s_instance.reset(new europa_protect(io));
-//    std::cout<<"created europa protection"<<std::endl;
   }
 }
 
@@ -81,7 +80,6 @@ europa_protect::europa_protect(asio::io_service &io)
 :m_strand(io,true) {}
 
 europa_protect::~europa_protect() {
-//  std::cout<<"destroyed europa protection"<<std::endl;
 }
 
 

@@ -70,59 +70,33 @@ assembly::pimpl::token_proxy::~token_proxy() {}
 // callbacks
 
 void assembly::pimpl::token_proxy::notifyAdded(const eu::TokenId& token) {
-//  eu::TokenId master = token->master();
-//  std::cerr<<"ADDED: "<<token->getPredicateName().toString()<<std::endl;
-  
-  // Lets cheat the system that way
-//  if( master.isNoId() ) {
-//    std::cerr<<"inc ref("<<token->getPredicateName().toString()<<")"<<std::endl;
-//    token->incRefCount();
-//  }
-  
 }
 
 void assembly::pimpl::token_proxy::notifyRemoved(const eu::TokenId& token) {
-//  std::cerr<<"REMOVED: "<<token->getPredicateName().toString()<<std::endl;
-  
 }
 
 void assembly::pimpl::token_proxy::notifyActivated(const eu::TokenId& token) {
-//  std::cerr<<"ACTIVE: "<<token->getPredicateName().toString()<<std::endl;
-  
 }
 
 void assembly::pimpl::token_proxy::notifyDeactivated(const eu::TokenId& token) {
-//  std::cerr<<"INACTIVE: "<<token->getPredicateName().toString()<<std::endl;
-  
 }
 
 void assembly::pimpl::token_proxy::notifyMerged(const eu::TokenId& token) {
-//  std::cerr<<"MERGE: "<<token->getPredicateName().toString()<<std::endl;
-  
 }
 
 void assembly::pimpl::token_proxy::notifySplit(const eu::TokenId& token) {
-//  std::cerr<<"SPLIT: "<<token->getPredicateName().toString()<<std::endl;
-  
 }
 
 void assembly::pimpl::token_proxy::notifyRejected(const eu::TokenId& token) {
-//  std::cerr<<"REJECT: "<<token->getPredicateName().toString()<<std::endl;
 }
 
 void assembly::pimpl::token_proxy::notifyReinstated(const eu::TokenId& token) {
-//  std::cerr<<"REINST: "<<token->getPredicateName().toString()<<std::endl;
-  
 }
 
 void assembly::pimpl::token_proxy::notifyCommitted(const eu::TokenId& token) {
-//  std::cerr<<"COMMIT: "<<token->getPredicateName().toString()<<std::endl;
-  
 }
 
 void assembly::pimpl::token_proxy::notifyTerminated(const eu::TokenId& token) {
-//  std::cerr<<"TERM: "<<token->getPredicateName().toString()<<std::endl;
-  
 }
 
 
@@ -417,11 +391,11 @@ void assembly::pimpl::add_goal(tr::goal_id g) {
           try {
             te::details::europa_restrict(param, var.domain());
           } catch(tr::DomainExcept const &de) {
-            std::cerr<<"WARNING: "<<g->object()<<"."<<g->predicate()
+            log(tlog::warn)<<g->object()<<"."<<g->predicate()
             <<" failed to constraint to "<<var<<std::endl;
           }
         } else
-          std::cerr<<"WARNING: "<<g->object()<<"."<<g->predicate()
+          log(tlog::warn)<<g->object()<<"."<<g->predicate()
           <<" do not have attribute "<<(*i)<<std::endl;
       }
       log()<<"Posted goal "<<(*g)<<std::endl;
@@ -509,9 +483,8 @@ void assembly::pimpl::init_clock() {
   
   double
     secs = ch::duration_cast< ch::duration<double> >(m_clock.tick_duration()).count();
-  eu::ConstrainedVariableId dur = restict_global("TICK_DURATION",
-                                                 eu::FloatDT::NAME().c_str(),
-                                                 eu::IntervalDomain(secs));
+  restict_global("TICK_DURATION", eu::FloatDT::NAME().c_str(),
+                 eu::IntervalDomain(secs));
   m_cur = restict_global("CUR_DATE", eu::IntDT::NAME().c_str(),
                          eu::IntervalIntDomain());
   m_last = restict_global("FINAL_TICK", eu::IntDT::NAME().c_str(),
@@ -536,8 +509,6 @@ void assembly::pimpl::tick_updated(clock::tick_type cur) {
     future(eu::eint::basis_type(cur),
            std::numeric_limits<eu::eint>::infinity());
     m_cur->restrictBaseDomain(future);
-//    std::cout<<"Updated tick to "<<cur<<" ("
-//    <<m_clock.to_date(cur)<<')'<<std::endl;
     send_step();
   }
 }

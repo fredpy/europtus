@@ -149,9 +149,12 @@ void imc_client::start_imc(int id, int port, clock &clk) {
   m_adapter.setTrexId(id);
   m_adapter.set_proxy(new clock_proxy(clk));
   if( !m_adapter.bind(port) ) {
+    log(tlog::error)<<"Failed to bind to port "<<port;
     std::cerr<<"Bind failure to "<<port<<std::endl;
-  } else
+  } else {
+    log(tlog::error)<<"Listening to IMC using port "<<port;
     std::cout<<"Bound to port "<<port<<std::endl;
+  }
   m_conn = clk.on_tick().connect_extended(boost::bind(&imc_client::on_tick,
                                                       this, _1, _2, _3));
 }

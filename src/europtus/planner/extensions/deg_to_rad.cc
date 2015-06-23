@@ -53,8 +53,6 @@ namespace {
     } else {
       EUROPA::edouble lo = n_inf, hi = p_inf;
       
-      // std::cerr<<dom.toString()<<" * ["<<lb<<", "<<ub<<"]"<<std::flush;
-      
       if( lb>lo ) {
         lo = lb;
         if( lo > dom.getUpperBound() )
@@ -66,12 +64,7 @@ namespace {
           hi += prec;
       }
       bool ret = dom.intersect(lo, hi);
-      
-      // if( dom.isEmpty() )
-      // 	std::cerr<<" EMPTY"<<std::endl;
-      // else
-      // 	std::cerr<<" = "<<dom.toString()<<std::endl;
-      
+            
       return ret;
     }
   }
