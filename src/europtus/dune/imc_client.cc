@@ -151,7 +151,7 @@ void imc_client::start_imc(int id, int port, clock &clk) {
   if( !m_adapter.bind(port) ) {
     std::cerr<<"Bind failure to "<<port<<std::endl;
   } else
-    std::cout<<"Bound to port "<<port<<"\n\n"<<std::endl;
+    std::cout<<"Bound to port "<<port<<std::endl;
   m_conn = clk.on_tick().connect_extended(boost::bind(&imc_client::on_tick,
                                                       this, _1, _2, _3));
 }

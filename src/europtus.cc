@@ -169,28 +169,6 @@ int main(int argc, char *argv[]) {
     po::notify(opt_val);
   }
   
-  
-//  if( opt_val.count("cfg") ) {
-//    std::cout<<"Load cfg \""<<opt_val["cfg"].as<std::string>()<<"\""<<std::endl;
-//    // I have  config file: load it and parse it
-//    std::ifstream cfg(opt_val["cfg"].as<std::string>().c_str());
-//    if( !cfg ) {
-//      std::cerr<<"Unable to read cfg file \""<<opt_val["cfg"].as<std::string>()
-//      <<std::endl;
-//      exit(1);
-//    }
-//    std::stringstream ss;
-//    ss<<cfg.rdbuf();
-//    boost::char_separator<char> sep("\n\r");
-//    std::string content(ss.str());
-//    boost::tokenizer< boost::char_separator<char> > tok(content, sep);
-//    std::vector<std::string> args;
-//    std::copy(tok.begin(), tok.end(), std::back_inserter(args));
-//    po::store(po::command_line_parser(args).options(cmd_line).options(hidden).run(),
-//              opt_val);
-//    po::notify(opt_val);
-//  }
-
   // identify tick frequency from options
   if( opt_val.count("hours") || opt_val.count("minutes") || opt_val.count("ms") ) {
     // special case where any other otpions is set but not seconds
@@ -265,7 +243,6 @@ int main(int argc, char *argv[]) {
     std::vector<std::string> const &incs = opt_val["path"].as< std::vector<std::string> >();
     for(std::vector<std::string>::const_iterator i=incs.begin();
         incs.end()!=i; ++i) {
-      std::cout<<"Add path: \""<<*i<<"\""<<std::endl;
       europa.add_search_path(*i);
     }
   }

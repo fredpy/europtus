@@ -512,7 +512,6 @@ void assembly::pimpl::init_clock() {
   eu::ConstrainedVariableId dur = restict_global("TICK_DURATION",
                                                  eu::FloatDT::NAME().c_str(),
                                                  eu::IntervalDomain(secs));
-  std::cout<<dur->toLongString()<<std::endl;
   m_cur = restict_global("CUR_DATE", eu::IntDT::NAME().c_str(),
                          eu::IntervalIntDomain());
   m_last = restict_global("FINAL_TICK", eu::IntDT::NAME().c_str(),
