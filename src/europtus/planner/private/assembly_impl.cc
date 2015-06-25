@@ -197,9 +197,10 @@ bool assembly::pimpl::is_fact(eu::TokenId const &tok,
 // manipulators
 
 tlog::stream assembly::pimpl::log(tlog::id_type const &what) const {
-  if( m_clock.started() )
-    return m_log.msg(m_clock.tick(), tlog::null, what);
-  else
+  if( m_clock.started() ) {
+    m_last_log = m_clock.current();
+    return m_log.msg(*m_last_log, tlog::null, what);
+  } else
     return m_log.msg(tlog::null, what);
 }
 
@@ -509,6 +510,9 @@ void assembly::pimpl::tick_updated(clock::tick_type cur) {
     future(eu::eint::basis_type(cur),
            std::numeric_limits<eu::eint>::infinity());
     m_cur->restrictBaseDomain(future);
+    if( 0==(cur%10) && m_last_log &&  (1+*m_last_log)<cur ) {
+        log()<<"Updated tick (still alive)";
+    }
     send_step();
   }
 }

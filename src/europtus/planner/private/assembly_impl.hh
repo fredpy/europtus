@@ -145,6 +145,7 @@ namespace europtus {
       
       EUROPA::ModuleId m_europtus;
       clock &m_clock;
+      mutable boost::optional<clock::tick_type> m_last_log;
       
       schema_type   m_schema;
       plan_db_type  m_plan;
