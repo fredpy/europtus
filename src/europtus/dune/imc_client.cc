@@ -129,6 +129,7 @@ tlog::stream imc_client::log(tlog::id_type const &what) const {
 
 tr::goal_id imc_client::get_token(imc::TrexToken *g, bool is_goal) {
   tr::goal_id ret(new tr::Goal(m_adapter.genericGoal(g, is_goal)));
+  log("DBG")<<(*ret);
   
   if( !is_goal ) {
     CHRONO::duration<double> t_stamp(g->getTimeStamp());
@@ -192,13 +193,16 @@ void imc_client::async_poll() {
     } else {
       // post next poll
       m_strand.post(boost::bind(&imc_client::async_poll, this));
+      log("MSG")<<msg->getId();
       
       // Now process the message
       if( imc::TrexOperation::getIdStatic()==msg->getId() ) {
         imc::TrexOperation *op(static_cast<imc::TrexOperation *>(msg.get()));
         tr::goal_id tok;
         
-        log()<<"IMC TREX OP: "<<op->op;
+        log()<<"IMC TREX OP: "<<static_cast<unsigned int>(op->op);
+        
+        
 
         switch(op->op) {
           case imc::TrexOperation::OP_POST_TOKEN:
@@ -207,9 +211,14 @@ void imc_client::async_poll() {
             m_tok_sig(fact_t, tok);
             break;
           case imc::TrexOperation::OP_POST_GOAL:
-            tok = get_token(op->token.get(), true);
-            log()<<"Request: "<<*tok;
-            m_tok_sig(rejectable_t, tok);
+            log()<<"request to be parsed";
+            try {
+              tok = get_token(op->token.get(), true);
+              log()<<"Request: "<<*tok;
+              m_tok_sig(rejectable_t, tok);
+            } catch(std::exception const &e) {
+              log(tlog::error)<<e.what();
+            }
             break;
           default:
             log(warn)<<"Ignoring TREX messages other than post_goal or post_token";

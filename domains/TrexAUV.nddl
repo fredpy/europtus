@@ -1,0 +1,196 @@
+#include "Position.nddl"
+
+class TrexPath {
+  float distance;
+  float entry_dx, entry_dy;
+  float exit_dx, exit_dy;
+
+  TrexPath(float dist, float ax, float ay, float zx, float zy) {
+    distance = dist;
+    entry_dx = ax;
+    entry_dy = ay;
+    exit_dx = zx;
+    exit_dy = zy;
+  }
+
+
+  TrexPath(float dist, float x, float y) {
+    distance = dist;
+    entry_dx = x;
+    entry_dy = y;
+    exit_dx = x;
+    exit_dy = y;
+  }
+}
+
+class DrifterFollow extends Timeline {
+    predicate undefined {}
+    predicate Failed {}
+    predicate Inactive {}
+    predicate DoSurvey {}
+    predicate Survey {
+	float center_lat, center_lon;
+	float heading;
+	float u, v;
+	bool lagrangian;
+	TrexPath path;
+	float size;
+    }
+
+    DrifterFollow() {
+	super();
+    }
+}
+
+
+class SpeedControl extends Timeline {
+    float min_speed, max_speed;
+    predicate Holds {
+	float speed, speed_2;
+	0.0 < speed;
+	speed == sqrt(speed_2);
+	temporalDistance(start, duration, end);
+    }
+
+    SpeedControl(float mi, float ma) {
+	super();
+	min_speed = mi;
+	max_speed = ma;
+    }
+}
+
+SpeedControl::Holds {
+    object.min_speed <= speed;
+    speed <= object.max_speed;
+}
+
+class AUV {
+    action exec_survey {
+	float distance;
+	float entry_lat, entry_lon;
+	float exit_lat, exit_lon;
+	// necessarily starts during mission
+	0 <= start;
+	start <= FINAL_TICK;
+    }
+
+    DrifterFollow drifter;
+    SpeedControl  speed;
+    PosState      estate;
+
+    AUV(float mi, float ma) {
+	drifter = new DrifterFollow();
+	speed = new SpeedControl(mi, ma);
+	estate = new PosState();
+    }
+}
+
+AUV::exec_survey {
+    TrexPath p;
+
+    // effect: the survey did complete 
+    meets(effect DrifterFollow.Survey survey);
+    
+    // condition: was idling, have position, and have a speed control
+    met_by(condition DrifterFollow.Inactive idle);
+    after(condition PosState.Position pos);
+    idle contains pos;
+    contained_by(condition SpeedControl.Holds sp);
+
+    // just constraint to be DoSurvey during the whole time
+    //   as it is nt a contion or effect it should just be ignored by the executive
+    //   still it had constraints to the plan which help find the solution faster
+    equals(DrifterFollow.DoSurvey exec);
+
+    // constrain all the DrifterFollow torelate to this auv
+    survey.object == object.drifter;
+    idle.object == object.drifter;
+    exec.object == object.drifter;
+    // constrain the pos to be of this AUV
+    pos.object == object.estate;
+    // constrain the speed to be of this AUV
+    sp.object == object.speed;
+    
+    p == survey.path;
+
+    // Now compute the survey properties
+    p.distance * survey.size == distance;
+
+    // duration of the survey itself
+    int to_final;
+    float duration_f, duration_sec, to_fin_f, to_fin_s;
+
+    temporalDistance(start, duration, end);
+    temporalDistance(start, to_final, FINAL_TICK);
+    
+    ceil(duration_f) == duration;
+    ceil(to_fin_f) == to_final;
+    
+    duration_f * TICK_DURATION == duration_sec;
+    to_fin_f * TICK_DURATION == to_fin_s;
+    
+    distance <= duration_sec * sp.speed;
+    distance <= to_fin_s * sp.speed;
+    
+    // identify my drift speed
+    float _bind_u_2, _bind_v_2, _bind_heading, speed_2, drift_speed, my_speed;
+    float heading_deg;
+
+    survey.heading == to_rad(heading_deg);
+    
+    abs(survey.u) == sqrt(_bind_u_2);
+    abs(survey.v) == sqrt(_bind_v_2);
+    _bind_u_2 < sp.speed_2;
+    _bind_v_2 < sp.speed_2;
+    survey.heading == _bind_heading;
+    speed_2 == _bind_u_2 + _bind_v_2;
+    drift_speed == sqrt(speed_2);
+
+    bool s_lag, is_lagrangian;
+    float cos_angle, sin_angle;
+    s_lag == survey.lagrangian;
+    0.0 <= my_speed;
+    my_speed <= drift_speed;
+
+    if( s_lag==true ) {
+	my_speed == drift_speed;
+    } else {
+	my_speed == 0.0;
+    }
+    testLEQ(is_lagrangian, 0.01, my_speed);
+
+    if( 0.0==drift_speed ) {
+	cos_angle == cos(heading_deg);
+	sin_angle == sin(heading_deg);
+    } else {
+	cos_angle * drift_speed == survey.u;
+	sin_angle * drift_speed == survey.v;
+    }
+   
+    // TODO: compute lat,lon of the waypoints
+    float shift_ax, shift_ay, shift_zx, shift_zy;
+    float a_east, a_north, z_east, z_north;
+    float o_lat, o_lon;
+
+    o_lat == survey.center_lat;
+    o_lon == survey.center_lon;
+    
+    shift_ax == p.entry_dx * survey.size;
+    shift_ay == p.entry_dy * survey.size;
+    shift_zx == p.exit_dx * survey.size;
+    shift_zy == p.exit_dy * survey.size;
+
+    a_east == (shift_ax * cos_angle) + (shift_ay * sin_angle);
+    a_north == (shift_ay * cos_angle) - (shift_ax * sin_angle);
+    z_east == (shift_zx * cos_angle) + (shift_zy * sin_angle);
+    z_north == (shift_zy * cos_angle) - (shift_zx * sin_angle);
+ 
+    ll_displace(o_lat, o_lon, a_north, a_east, entry_lat, entry_lon);
+    ll_displace(o_lat, o_lon, z_north, z_east, exit_lat, exit_lon);
+
+    // Now need to ensure that we have the proper time
+    // to cover the distance from the initial location  
+
+    
+}
+

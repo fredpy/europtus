@@ -2,11 +2,22 @@
   <!-- FlawFilter component="HorizonFilter"
        policy="PartiallyContained"/ -->
 
-  <ThreatManager defaultPriority="1">
+  <ThreatManager defaultPriority="10">
     <FlawHandler component="StandardThreatHandler"/>
   </ThreatManager>
 
-  <OpenConditionManager defaultPriority="0">
+  <OpenConditionManager defaultPriority="20">
     <FlawHandler component="StandardOpenConditionHandler"/>
   </OpenConditionManager>
+
+    <UnboundVariableManager defaultPriority="500">
+    <FlawFilter component="doNotMatch">
+      <Choice name="_bind_u_2"/>
+      <Choice name="_bind_v_2"/>
+      <Choice name="_bind_heading"/>
+      <Choice name="_bind_lagrangian"/>
+    </FlawFilter>
+    <FlawHandler component="toZero" />
+  </UnboundVariableManager>
+
 </Solver>

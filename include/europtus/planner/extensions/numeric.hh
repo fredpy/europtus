@@ -1,13 +1,13 @@
 /*********************************************************************
  * Software License Agreement (BSD License)
- * 
- *  Copyright (c) 2015, Frederic Py.
+ *
+ *  Copyright (c) 2015, Frederic Py
  *  All rights reserved.
- * 
+ *
  *  Redistribution and use in source and binary forms, with or without
  *  modification, are permitted provided that the following conditions
  *  are met:
- * 
+ *
  *   * Redistributions of source code must retain the above copyright
  *     notice, this list of conditions and the following disclaimer.
  *   * Redistributions in binary form must reproduce the above
@@ -17,7 +17,7 @@
  *   * Neither the name of the TREX Project nor the names of its
  *     contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
- * 
+ *
  *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
  *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
  *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
@@ -31,43 +31,34 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-#include "TrexAUV.nddl"
+#ifndef H_europtus_planner_extensions_numeric
+# define H_europtus_planner_extensions_numeric
 
-// Model instanciation
+# include "europtus/planner/bits/europa_cfg.hh"
+# include <PLASMA/Constraint.hh>
 
-// Define the lagrangian paths we use in an abstract form
-TrexPath square = new TrexPath(4.0, -0.5, 0.5);
-TrexPath square_twice = new TrexPath(8.0, -0.5, 0.5);
+namespace europtus {
+  namespace planner {
+    
+    class sqrt_cstr :public EUROPA::Constraint {
+    public:
+      sqrt_cstr(EUROPA::LabelStr const &name,
+                  EUROPA::LabelStr const &propagatorName,
+                  EUROPA::ConstraintEngineId const &cstr,
+                  std::vector<EUROPA::ConstrainedVariableId> const &vars);
+      ~sqrt_cstr();
+      
+    private:
+      void handleExecute();
+      
+      EUROPA::Domain &m_square;
+      EUROPA::Domain &m_root;
+      
+      static EUROPA::IntervalDomain const s_pos;
+      static EUROPA::edouble const s_epsilon;
+    };
 
-// vehicle timelines
+  }
+}
 
-AUV auv1 = new AUV(0.5, 1.75);
-AUV auv2 = new AUV(0.5, 1.75);
-
-// set the AUVs speed
-
-fact(auv1.speed.Holds sp_1);
-precedes(sp_1.start, 0);
-precedes(CUR_DATE, sp_1.end);
-precedes(FINAL_TICK, sp_1.end);
-sp_1.speed.specify(1.25);
-
-fact(auv2.speed.Holds sp_2);
-precedes(sp_2.start, 0);
-precedes(CUR_DATE, sp_2.end);
-precedes(FINAL_TICK, sp_2.end);
-sp_2.speed.specify(0.75);
-
-// [imc]DBG: auv2.drifter.Survey{center_lat=0.6658485111, center_lon=-0.4966177319, heading=0, lagrangian=1, path=square, size=600}
-
-
-rejectable(DrifterFollow.Survey survey);
-precedes(0, survey.start);
-precedes(survey.start, FINAL_TICK);
-
-survey.center_lat.specify(0.6658485111);
-survey.center_lon.specify(-0.4966177319);
-survey.heading.specify(0.0);
-survey.lagrangian.specify(true);
-survey.path.specify(square);
-survey.size.specify(600.0);
+#endif // H_europtus_planner_extensions_numeric

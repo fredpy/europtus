@@ -109,6 +109,9 @@ add_executable(europtus
   src/europtus/planner/ModuleEuroptus.cc
   src/europtus/planner/extensions/ceil_constraint.cc
   src/europtus/planner/extensions/deg_to_rad.cc
+  src/europtus/planner/extensions/do_not_match.cc
+  src/europtus/planner/extensions/numeric.cc
+  src/europtus/planner/extensions/trigonometry.cc
   src/europtus/planner/private/assembly_impl.cc
   src/europtus/private/priority_strand_impl.cc
 
@@ -132,6 +135,9 @@ add_executable(europtus
   ${CMAKE_BINARY_DIR}/include/europtus/planner/bits/europa_cfg.hh
   include/europtus/planner/extensions/ceil_constraint.hh
   include/europtus/planner/extensions/deg_to_rad.hh
+  include/europtus/planner/extensions/do_not_match.hh
+  include/europtus/planner/extensions/numeric.hh
+  include/europtus/planner/extensions/trigonometry.hh
   src/europtus/private/priority_strand_impl.hh
   src/europtus/planner/private/assembly_impl.hh
 
