@@ -62,9 +62,11 @@ namespace eu_s=eu::SOLVERS;
 // structors
 
 assembly::pimpl::token_proxy::token_proxy(assembly::pimpl &me)
-:eu::PlanDatabaseListener(me.m_plan), m_self(me) {}
+:eu::PlanDatabaseListener(me.m_plan), m_self(me) {
+}
 
-assembly::pimpl::token_proxy::~token_proxy() {}
+assembly::pimpl::token_proxy::~token_proxy() {
+}
 
 
 // callbacks
@@ -76,12 +78,26 @@ void assembly::pimpl::token_proxy::notifyRemoved(const eu::TokenId& token) {
 }
 
 void assembly::pimpl::token_proxy::notifyActivated(const eu::TokenId& token) {
+  if( m_self.is_fact(token) ) {
+    m_self.log("FACT")<<token->getObject()->toString()<<"."<<token->getUnqualifiedPredicateName().toString()
+    <<"\n\tfrom "<<token->start()->lastDomain().toString()
+    <<"\n\tduring "<<token->duration()->lastDomain().toString()
+    <<"\n\tto "<<token->end()->lastDomain().toString();
+  }
 }
 
 void assembly::pimpl::token_proxy::notifyDeactivated(const eu::TokenId& token) {
 }
 
 void assembly::pimpl::token_proxy::notifyMerged(const eu::TokenId& token) {
+  if( m_self.is_fact(token) ) {
+    eu::TokenId me = token->getActiveToken();
+    
+    m_self.log("FACT")<<me->getObject()->toString()<<"."<<me->getUnqualifiedPredicateName().toString()
+    <<"\n\tfrom "<<me->start()->lastDomain().toString()
+    <<"\n\tduring "<<me->duration()->lastDomain().toString()
+    <<"\n\tto "<<me->end()->lastDomain().toString();
+  }
 }
 
 void assembly::pimpl::token_proxy::notifySplit(const eu::TokenId& token) {
