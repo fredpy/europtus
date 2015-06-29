@@ -76,6 +76,9 @@ namespace europtus {
       void load_solver(boost::filesystem::path cfg_file);
       bool load_nddl(boost::filesystem::path nddl_file);
       
+      void set_plan_to(clock::tick_type value);
+      void reset_plan_to();
+      
       // void start();
       
       void observation(TREX::transaction::goal_id obs);

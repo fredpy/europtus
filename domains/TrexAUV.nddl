@@ -107,6 +107,9 @@ AUV::accept_pos {
 AUV::exec_survey {
     TrexPath p;
 
+    // This cann only happend if we are done planning
+    // starts_during(condition plan_state.execute exec);
+    
     // effect: the survey did complete 
     meets(effect DrifterFollow.Survey survey);
     

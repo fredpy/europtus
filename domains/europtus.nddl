@@ -1,0 +1,27 @@
+float TICK_DURATION; // duration of a tick in seconds (determined by europtus)
+int   CUR_DATE; // update as the tick is advancing in real-time (by europtus)
+              	//   its value should remain [cur-tick, +inf)
+                //  and it shoud be only used to compare against other time points
+int   FINAL_TICK;
+
+// class plan_state extends Timeline {
+//       predicate planning {}
+//       predicate execute {}
+
+//       plan_state() {}
+// }
+
+// plan_state::execute {
+//     temporalDistance(start, duration, end);
+//     start >= 0;
+//     end <= FINAL_TICK;
+// }
+
+// plan_state::planning {
+//     temporalDistance(start, duration, end);
+//     end >= 0;
+//     end <= FINAL_TICK;
+//     meets(execute);
+// }
+
+// plan_state europtus = new plan_state();

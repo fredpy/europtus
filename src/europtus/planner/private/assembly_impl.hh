@@ -106,6 +106,9 @@ namespace europtus {
         return log(TREX::utils::log::info);
       }
       
+      void reset_plan_time_out();
+      void set_plan_time_out(clock::tick_type value);
+      
     private:
       EUROPA::ConstrainedVariableId restict_global(char const *name,
                                                    char const *type,
@@ -120,8 +123,11 @@ namespace europtus {
       
       bool have_predicate(EUROPA::ObjectId const &object,
                           std::string &pred) const;
-      EUROPA::TokenId new_token(std::string const &object,
+      EUROPA::TokenId new_token(EUROPA::ObjectId const &obj,
                                 std::string pred,
+                                bool is_fact);
+      EUROPA::TokenId new_token(std::string const &object,
+                                std::string const &pred,
                                 bool is_fact);
       /** @brief Test if a token is a fact
        *
@@ -146,6 +152,12 @@ namespace europtus {
       EUROPA::ModuleId m_europtus;
       clock &m_clock;
       mutable boost::optional<clock::tick_type> m_last_log;
+      clock::tick_type m_plan_since;
+      boost::optional<clock::tick_type> m_max_delay;
+      
+      
+      void init_plan_state();
+      void update_state(clock::tick_type date);
       
       schema_type   m_schema;
       plan_db_type  m_plan;
@@ -154,6 +166,8 @@ namespace europtus {
       
       bool m_planning, m_pending;
       EUROPA::ConstrainedVariableId m_cur, m_last;
+      EUROPA::TimelineId            m_plan_state;
+      EUROPA::TokenId               m_plan_tok;
       TREX::utils::log::text_log &m_log;
       
       pimpl();

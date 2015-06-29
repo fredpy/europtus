@@ -77,7 +77,7 @@ WhaleFollow::Active {
     
     scale_inner * inner.distance == scale * outter.distance;
 
-    met_by(Inactive idle);
+    met_by(Inactive idle);    
 }
 
 Whale::locate {

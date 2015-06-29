@@ -186,6 +186,19 @@ void assembly::set_debug(path cfg_file) {
                       init_p).get();
 }
 
+void assembly::set_plan_to(clock::tick_type value) {
+  if( value<=0 )
+    throw exception("Planning time out must be strictly positive");
+  prot::strand().send(boost::bind(&pimpl::set_plan_time_out, m_impl, value),
+                      init_p);
+}
+
+void assembly::reset_plan_to() {
+  prot::strand().send(boost::bind(&pimpl::reset_plan_time_out, m_impl),
+                      init_p);
+}
+
+
 
 void assembly::load_solver(path cfg_file) {
   cfg_file.make_preferred();

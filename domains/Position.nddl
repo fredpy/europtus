@@ -1,8 +1,5 @@
-float TICK_DURATION; // duration of a tick in seconds (determined by europtus)
-int   CUR_DATE; // update as the tick is advancing in real-time (by europtus)
-              	//   its value should remain [cur-tick, +inf)
-                //  and it shoud be only used to compare against other time points
-int   FINAL_TICK;
+
+#include "europtus.nddl"
 
 class PosState extends Timeline {
       predicate Position {

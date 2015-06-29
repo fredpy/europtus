@@ -390,6 +390,8 @@ int main(int argc, char *argv[]) {
     europa.set_debug(europa_dbg_cfg);
     europa.load_solver(europa_solver);
     europa.load_nddl(model);
+    // At most 120 ticks
+    europa.set_plan_to(120);
     
     clock.start();
     

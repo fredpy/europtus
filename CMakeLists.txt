@@ -112,6 +112,7 @@ add_executable(europtus
   src/europtus/planner/extensions/do_not_match.cc
   src/europtus/planner/extensions/numeric.cc
   src/europtus/planner/extensions/trigonometry.cc
+  src/europtus/planner/extensions/fact_filters.cc
   src/europtus/planner/private/assembly_impl.cc
   src/europtus/private/priority_strand_impl.cc
 
@@ -138,6 +139,7 @@ add_executable(europtus
   include/europtus/planner/extensions/do_not_match.hh
   include/europtus/planner/extensions/numeric.hh
   include/europtus/planner/extensions/trigonometry.hh
+  include/europtus/planner/extensions/fact_filters.hh
   src/europtus/private/priority_strand_impl.hh
   src/europtus/planner/private/assembly_impl.hh
 

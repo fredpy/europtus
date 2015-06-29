@@ -37,6 +37,7 @@
 #include <europtus/planner/extensions/ceil_constraint.hh>
 #include <europtus/planner/extensions/deg_to_rad.hh>
 #include <europtus/planner/extensions/do_not_match.hh>
+#include <europtus/planner/extensions/fact_filters.hh>
 #include <europtus/planner/extensions/numeric.hh>
 #include <europtus/planner/extensions/trigonometry.hh>
 #include <trex/lsts/EuropaExtensions.hh>
@@ -189,6 +190,7 @@ void ModuleEuroptus::initialize(EngineId engine) {
   
   eu_s::ComponentFactoryMgr *cfm =  (eu_s::ComponentFactoryMgr *)engine->getComponent("ComponentFactoryMgr");
   
+  REGISTER_FLAW_FILTER(cfm, fact_filter, FactFilter);
   REGISTER_FLAW_FILTER(cfm, do_not_match, doNotMatch);
   REGISTER_FLAW_HANDLER(cfm, TowardZero, toZero);
 }

@@ -42,6 +42,7 @@
 #include <PLASMA/ModuleNddl.hh>
 #include <PLASMA/NddlInterpreter.hh>
 #include <PLASMA/TokenVariable.hh>
+#include <PLASMA/Timeline.hh>
 
 #include <trex/europa/bits/europa_convert.hh>
 
@@ -82,7 +83,8 @@ void assembly::pimpl::token_proxy::notifyActivated(const eu::TokenId& token) {
     m_self.log("FACT")<<token->getObject()->toString()<<"."<<token->getUnqualifiedPredicateName().toString()
     <<"\n\tfrom "<<token->start()->lastDomain().toString()
     <<"\n\tduring "<<token->duration()->lastDomain().toString()
-    <<"\n\tto "<<token->end()->lastDomain().toString();
+    <<"\n\tto "<<token->end()->lastDomain().toString()
+    <<"\n\tid "<<token->getKey();
   }
 }
 
@@ -96,7 +98,8 @@ void assembly::pimpl::token_proxy::notifyMerged(const eu::TokenId& token) {
     m_self.log("FACT")<<me->getObject()->toString()<<"."<<me->getUnqualifiedPredicateName().toString()
     <<"\n\tfrom "<<me->start()->lastDomain().toString()
     <<"\n\tduring "<<me->duration()->lastDomain().toString()
-    <<"\n\tto "<<me->end()->lastDomain().toString();
+    <<"\n\tto "<<me->end()->lastDomain().toString()
+    <<"\n\tid "<<token->getKey();
   }
 }
 
@@ -246,8 +249,23 @@ void assembly::pimpl::check_planning() {
     if( m_cstr->provenInconsistent() || m_cstr->pending() ||
        !( m_solver->noMoreFlaws() && m_solver->getOpenDecisions().empty() ) ) {
       if( !m_planning ) {
+        log("PLAN")<<"SWitched to planning: "
+        <<"\n\t inconsistent="<<m_cstr->provenInconsistent()
+        <<"\n\t pending="<<m_cstr->pending()
+        <<"\n\t flaws="<<(!m_solver->noMoreFlaws());
+        
         m_planning = true;
         m_steps = m_solver->getStepCount()+m_lost;
+        if( m_clock.started() )
+          m_plan_since = m_clock.current();
+      } else if( m_max_delay && m_clock.started() ) {
+        clock::tick_type delay = m_clock.current()-m_plan_since;
+        if( delay>*m_max_delay ) {
+          log(tlog::error)<<"Planning exceeded its timeout ("<<delay<<">"
+            <<(*m_max_delay)<<")";
+          end_plan();
+          exit(5);
+        }
       }
       
       if( !m_pending ) {
@@ -314,21 +332,17 @@ void assembly::pimpl::end_plan() {
     <<"\n=============================================================="
     <<std::endl;
     m_steps = steps;
+    m_planning = false;
   }
 }
 
 
-
-
-eu::TokenId assembly::pimpl::new_token(std::string const &object,
+eu::TokenId assembly::pimpl::new_token(eu::ObjectId const &obj,
                                        std::string pred,
                                        bool is_fact) {
-  eu::ObjectId obj = m_plan->getObject(object);
-  if( obj.isNoId() )
-    throw exception("Undefined object \""+object+"\"");
   if( !have_predicate(obj, pred) )
-    throw exception("Object \""+object+"\" do not have predicate \""+pred+"\"");
-  
+    throw exception("Object \""+obj->getName().toString()
+                    +"\" do not have predicate \""+pred+"\"");
   eu::DbClientId cli = m_plan->getClient();
   eu::TokenId tok = cli->createToken(pred.c_str(), NULL,
                                      !is_fact, // a non fact is rejectable
@@ -336,6 +350,16 @@ eu::TokenId assembly::pimpl::new_token(std::string const &object,
   
   tok->getObject()->specify(obj->getKey());
   return tok;
+}
+
+
+eu::TokenId assembly::pimpl::new_token(std::string const &object,
+                                       std::string const &pred,
+                                       bool is_fact) {
+  eu::ObjectId obj = m_plan->getObject(object);
+  if( obj.isNoId() )
+    throw exception("Undefined object \""+object+"\"");
+  return new_token(obj, pred, is_fact);
 }
 
 
@@ -496,6 +520,59 @@ bool assembly::pimpl::nddl(std::string path, std::string file) {
   }
 }
 
+void assembly::pimpl::init_plan_state() {
+  eu::ObjectId obj = m_plan->getObject("europtus");
+  if( obj.isNoId() )
+    log(tlog::error)<<"Did not find europtus timeline";
+  else if( !eu::TimelineId::convertable(obj) )
+    log(tlog::error)<<"europtus is not a timeline";
+  else {
+    eu::eint lo = std::numeric_limits<eu::eint>::minus_infinity(),
+    hi = static_cast<eu::eint::basis_type>(m_clock.current())-1;
+  
+    eu::IntervalIntDomain past(lo, hi);
+    
+    m_plan_state = obj;
+    m_plan_tok = new_token(m_plan_state, "planning", true);
+    m_plan_tok->start()->restrictBaseDomain(past);
+  }
+}
+
+void assembly::pimpl::update_state(clock::tick_type date) {
+  // TODO revise this code 
+  if( m_plan_state.isId() ) {
+    if( m_plan_tok.isNoId() ) {
+      log(tlog::error)<<"No curent plan state token";
+      exit(5);
+    } else if( m_plan_tok->getUnqualifiedPredicateName()!="planning" ) {
+      log(tlog::error)<<"Plan state token is not planning";
+      exit(5);
+    }
+    
+    eu::IntervalIntDomain now(date);
+    eu::TokenId current = m_plan_tok;
+    
+    if( m_plan_tok->isMerged() )
+      current = m_plan_tok->getActiveToken();
+    
+    if( m_planning  ) {
+      log("PLAN")<<"I am planning";
+      if( m_plan_tok->end()->baseDomain().getUpperBound()<=now.getLowerBound() ) {
+        m_plan_tok = new_token(m_plan_state, "planning", true);
+        m_plan_tok->start()->restrictBaseDomain(now);
+      }
+      eu::IntervalIntDomain future(static_cast<eu::eint::basis_type>(date+1),
+                                   std::numeric_limits<eu::eint>::infinity());
+      m_plan_tok->end()->restrictBaseDomain(future);
+    } else {
+      log("PLAN")<<"I am not planning";
+      if( current->end()->lastDomain().intersects(now) )
+        m_plan_tok->end()->restrictBaseDomain(now);
+    }
+    m_cstr->propagate();
+  }
+}
+
 void assembly::pimpl::init_clock() {
   
   double
@@ -506,6 +583,9 @@ void assembly::pimpl::init_clock() {
                          eu::IntervalIntDomain());
   m_last = restict_global("FINAL_TICK", eu::IntDT::NAME().c_str(),
                           eu::IntervalIntDomain());
+  if( m_planning )
+    m_plan_since = m_clock.current();
+  init_plan_state();
 
   m_clock.restrict_final(eu::cast_basis(std::numeric_limits<eu::eint>::max()));
   send_step();
@@ -529,6 +609,17 @@ void assembly::pimpl::tick_updated(clock::tick_type cur) {
     if( 0==(cur%10) && m_last_log &&  (5+*m_last_log)<cur ) {
         log()<<"Updated tick (still alive: "<<m_clock.to_date(cur)<<")";
     }
+    update_state(cur);
     send_step();
   }
 }
+
+void assembly::pimpl::reset_plan_time_out() {
+  m_max_delay.reset();
+}
+
+void assembly::pimpl::set_plan_time_out(clock::tick_type value) {
+  log()<<"Plan timer limitted to "<<value<<" ticks";
+  m_max_delay.reset(value);
+}
+

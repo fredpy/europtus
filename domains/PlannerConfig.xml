@@ -2,15 +2,48 @@
   <!-- FlawFilter component="HorizonFilter"
        policy="PartiallyContained"/ -->
 
+  <ThreatManager defaultPriority="6">
+    <FactFilter invert="1"/>
+    <FlawHandler component="StandardThreatHandler"/>
+  </ThreatManager>
+  
+  
+  <ThreatManager defaultPriority="8">
+    <FlawFilter class-match="AUV" />
+    <FlawFilter class-match="DrifterFollow" />
+    <FlawFilter class-match="Whale" />
+    <FlawFilter class-match="WhaleFollow" />
+    <FactFilter />
+    <FlawHandler component="StandardThreatHandler"/>
+  </ThreatManager>
+  
+  
   <ThreatManager defaultPriority="10">
+    <FactFilter />
     <FlawHandler component="StandardThreatHandler"/>
   </ThreatManager>
 
-  <OpenConditionManager defaultPriority="20">
+  <OpenConditionManager defaultPriority="12">
+    <FactFilter invert="1" />
+    <FlawHandler component="StandardOpenConditionHandler"/>
+  </OpenConditionManager>
+  
+
+  <OpenConditionManager defaultPriority="15">
+    <FlawFilter class-match="AUV" />
+    <FlawFilter class-match="DrifterFollow" />
+    <FlawFilter class-match="Whale" />
+    <FlawFilter class-match="WhaleFollow" />
+    <FactFilter />
     <FlawHandler component="StandardOpenConditionHandler"/>
   </OpenConditionManager>
 
-    <UnboundVariableManager defaultPriority="500">
+  <OpenConditionManager defaultPriority="20">
+    <FactFilter />
+    <FlawHandler component="StandardOpenConditionHandler"/>
+  </OpenConditionManager>
+
+  <UnboundVariableManager defaultPriority="500">
     <FlawFilter component="doNotMatch">
       <Choice name="_bind_u_2"/>
       <Choice name="_bind_v_2"/>
