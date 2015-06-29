@@ -36,6 +36,8 @@
 #include "private/assembly_impl.hh"
 #include <europtus/planner/extensions/ceil_constraint.hh>
 #include <europtus/planner/extensions/deg_to_rad.hh>
+#include <europtus/planner/extensions/decision_point.hh>
+#include <europtus/planner/extensions/earliest_first.hh>
 #include <europtus/planner/extensions/do_not_match.hh>
 #include <europtus/planner/extensions/fact_filters.hh>
 #include <europtus/planner/extensions/numeric.hh>
@@ -45,6 +47,7 @@
 #include <PLASMA/CFunctions.hh>
 #include <PLASMA/UnboundVariableDecisionPoint.hh>
 #include <PLASMA/ValueSource.hh>
+#include <PLASMA/Token.hh>
 
 
 using namespace EUROPA;
@@ -193,6 +196,9 @@ void ModuleEuroptus::initialize(EngineId engine) {
   REGISTER_FLAW_FILTER(cfm, fact_filter, FactFilter);
   REGISTER_FLAW_FILTER(cfm, do_not_match, doNotMatch);
   REGISTER_FLAW_HANDLER(cfm, TowardZero, toZero);
+  REGISTER_FLAW_HANDLER(cfm, threat_decision_pt, EuroptusThreatHandler);
+  REGISTER_FLAW_MANAGER(cfm, earliest_first, EarliestFirst);
+
 }
 
 void ModuleEuroptus::uninitialize(EngineId engine) {

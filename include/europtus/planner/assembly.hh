@@ -57,6 +57,7 @@ namespace europtus {
       class pimpl;
     public:
       typedef boost::filesystem::path path;
+      static std::string const s_now;
       
       
       assembly(boost::asio::io_service &io, clock &c,

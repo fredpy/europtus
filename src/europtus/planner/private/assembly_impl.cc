@@ -132,6 +132,7 @@ using europtus::clock;
 
 boost::filesystem::path const assembly::pimpl::s_europa(EUROPA_HOME"/include");
 
+
 // structor
 
 assembly::pimpl::pimpl(clock &c, tlog::text_log &log)
@@ -564,6 +565,7 @@ void assembly::pimpl::update_state(clock::tick_type date) {
     
     if( m_planning && m_confirmed ) {
       log("PLAN")<<"I am planning";
+      log("PLAN")<<"Current plan:\n"<<m_plan->toString();
       if( m_plan_tok->end()->baseDomain().getUpperBound()<=now.getLowerBound() ) {
         m_plan_tok = new_token(m_plan_state, "planning", true);
         m_plan_tok->start()->restrictBaseDomain(now);
@@ -588,7 +590,7 @@ void assembly::pimpl::init_clock() {
     secs = ch::duration_cast< ch::duration<double> >(m_clock.tick_duration()).count();
   restict_global("TICK_DURATION", eu::FloatDT::NAME().c_str(),
                  eu::IntervalDomain(secs));
-  m_cur = restict_global("CUR_DATE", eu::IntDT::NAME().c_str(),
+  m_cur = restict_global(assembly::s_now.c_str(), eu::IntDT::NAME().c_str(),
                          eu::IntervalIntDomain());
   m_last = restict_global("FINAL_TICK", eu::IntDT::NAME().c_str(),
                           eu::IntervalIntDomain());

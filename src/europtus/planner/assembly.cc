@@ -58,6 +58,8 @@ namespace {
 
 // statics
 
+std::string const assembly::s_now("CUR_DATE");
+
 void assembly::send(boost::weak_ptr<pimpl> who,
                     boost::function<void (pimpl *)> fn,
                     europa_priority p) {

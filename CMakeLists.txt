@@ -107,8 +107,10 @@ add_executable(europtus
   src/europtus/planner/europa_protect.cc
   src/europtus/planner/exception.cc
   src/europtus/planner/ModuleEuroptus.cc
+  src/europtus/planner/extensions/earliest_first.cc
   src/europtus/planner/extensions/ceil_constraint.cc
   src/europtus/planner/extensions/deg_to_rad.cc
+  src/europtus/planner/extensions/decision_point.cc
   src/europtus/planner/extensions/do_not_match.cc
   src/europtus/planner/extensions/numeric.cc
   src/europtus/planner/extensions/trigonometry.cc
@@ -134,7 +136,9 @@ add_executable(europtus
   include/europtus/planner/exception.hh
   include/europtus/planner/ModuleEuroptus.hh
   ${CMAKE_BINARY_DIR}/include/europtus/planner/bits/europa_cfg.hh
+  include/europtus/planner/extensions/earliest_first.hh
   include/europtus/planner/extensions/ceil_constraint.hh
+  include/europtus/planner/extensions/decision_point.hh
   include/europtus/planner/extensions/deg_to_rad.hh
   include/europtus/planner/extensions/do_not_match.hh
   include/europtus/planner/extensions/numeric.hh
