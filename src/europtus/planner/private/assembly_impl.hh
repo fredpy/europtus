@@ -164,7 +164,7 @@ namespace europtus {
       cstr_eng_type m_cstr;
       solver_type   m_solver;
       
-      bool m_planning, m_pending;
+      bool m_planning, m_pending, m_confirmed;
       EUROPA::ConstrainedVariableId m_cur, m_last;
       EUROPA::TimelineId            m_plan_state;
       EUROPA::TokenId               m_plan_tok;

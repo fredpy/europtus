@@ -108,7 +108,7 @@ AUV::exec_survey {
     TrexPath p;
 
     // This cann only happend if we are done planning
-    // starts_during(condition plan_state.execute exec);
+    contained_by(condition plan_state.execute my_exec);
     
     // effect: the survey did complete 
     meets(effect DrifterFollow.Survey survey);
@@ -226,8 +226,11 @@ AUV::exec_survey {
     distance_from_start <= time_p_s * sp.speed;
     time_p_s * half_speed <= distance_from_start;
 
-    // distance from initial tick
-    start == ceil(start_f);
+    // distance from starting to execute
+    int local_start;
+    temporalDistance(my_exec.start, local_start, start);
+    
+    local_start == ceil(start_f);
     start_s == start_f * TICK_DURATION;
     distance_from_start <= start_s * sp.speed;
     

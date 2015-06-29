@@ -249,22 +249,28 @@ void assembly::pimpl::check_planning() {
     if( m_cstr->provenInconsistent() || m_cstr->pending() ||
        !( m_solver->noMoreFlaws() && m_solver->getOpenDecisions().empty() ) ) {
       if( !m_planning ) {
-        log("PLAN")<<"SWitched to planning: "
-        <<"\n\t inconsistent="<<m_cstr->provenInconsistent()
-        <<"\n\t pending="<<m_cstr->pending()
-        <<"\n\t flaws="<<(!m_solver->noMoreFlaws());
+//        log("PLAN")<<"SWitched to planning: "
+//        <<"\n\t inconsistent="<<m_cstr->provenInconsistent()
+//        <<"\n\t pending="<<m_cstr->pending()
+//        <<"\n\t flaws="<<(!m_solver->noMoreFlaws());
+//        if( !m_solver->noMoreFlaws() )
+//          log("PLAN")<<"Faws:\n"<<m_solver->printOpenDecisions();
         
         m_planning = true;
+        m_confirmed = false;
         m_steps = m_solver->getStepCount()+m_lost;
         if( m_clock.started() )
           m_plan_since = m_clock.current();
-      } else if( m_max_delay && m_clock.started() ) {
-        clock::tick_type delay = m_clock.current()-m_plan_since;
-        if( delay>*m_max_delay ) {
-          log(tlog::error)<<"Planning exceeded its timeout ("<<delay<<">"
-            <<(*m_max_delay)<<")";
-          end_plan();
-          exit(5);
+      } else {
+        m_confirmed = true;
+        if( m_max_delay && m_clock.started() ) {
+          clock::tick_type delay = m_clock.current()-m_plan_since;
+          if( delay>*m_max_delay ) {
+            log(tlog::error)<<"Planning exceeded its timeout ("<<delay<<">"
+              <<(*m_max_delay)<<")";
+            end_plan();
+            exit(5);
+          }
         }
       }
       
@@ -326,14 +332,15 @@ void assembly::pimpl::end_plan() {
     log()<<"Planning completed after "
       <<(steps-m_steps)<<" steps:\n"
     <<"  - steps="<<steps<<"\n"
-    <<"  - depth="<<m_solver->getDepth()<<"\n\n"
-    <<"==============================================================\n"
-    <<m_plan->toString()
-    <<"\n=============================================================="
+    <<"  - depth="<<m_solver->getDepth()<<"\n"
+//    <<"==============================================================\n"
+//    <<m_plan->toString()
+//    <<"\n=============================================================="
     <<std::endl;
     m_steps = steps;
-    m_planning = false;
   }
+  m_planning = false;
+  m_confirmed = false;
 }
 
 
@@ -555,7 +562,7 @@ void assembly::pimpl::update_state(clock::tick_type date) {
     if( m_plan_tok->isMerged() )
       current = m_plan_tok->getActiveToken();
     
-    if( m_planning  ) {
+    if( m_planning && m_confirmed ) {
       log("PLAN")<<"I am planning";
       if( m_plan_tok->end()->baseDomain().getUpperBound()<=now.getLowerBound() ) {
         m_plan_tok = new_token(m_plan_state, "planning", true);
@@ -564,12 +571,14 @@ void assembly::pimpl::update_state(clock::tick_type date) {
       eu::IntervalIntDomain future(static_cast<eu::eint::basis_type>(date+1),
                                    std::numeric_limits<eu::eint>::infinity());
       m_plan_tok->end()->restrictBaseDomain(future);
-    } else {
-      log("PLAN")<<"I am not planning";
-      if( current->end()->lastDomain().intersects(now) )
+    } else if( !m_planning ) {
+      if( current->end()->lastDomain().intersects(now) ) {
+        log("PLAN")<<"I am not planning";
         m_plan_tok->end()->restrictBaseDomain(now);
+        m_cstr->propagate();
+        log("PLAN")<<m_plan->toString();
+      }
     }
-    m_cstr->propagate();
   }
 }
 
