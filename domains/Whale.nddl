@@ -1,0 +1,180 @@
+#include "TrexAUV.nddl"
+
+class survey_pair {
+    TrexPath ref, inner;
+
+    survey_pair(TrexPath a, TrexPath b) {
+	ref = a;
+	inner = b;
+    }
+}
+
+class WhaleFollow extends Timeline {
+      predicate Inactive {}
+      predicate Active {
+	  float       scale, scale_inner;
+	  float       heading;
+	  survey_pair surveys;
+      }
+
+
+      WhaleFollow() {}
+}
+
+class SurveyCount extends Timeline {
+    predicate Holds {
+	int number;
+    }
+
+    SurveyCount() {}
+}
+
+SurveyCount::Holds {
+    
+    if( start>=0 ) {
+	met_by(Holds prev);
+	number == prev.number + 1;
+    }
+}
+
+
+class Whale {
+    WhaleFollow survey;
+    PosState    estate;
+    SurveyCount counter;
+    float       uav_minutes;
+
+    action track {
+	float scale, heading;
+	survey_pair surveys;
+    }
+
+    action locate {
+    }
+
+
+    Whale(float uav_mins) {
+	survey = new WhaleFollow();
+	estate = new PosState();
+	counter = new SurveyCount();
+	uav_minutes = uav_mins;
+    }
+}
+
+
+WhaleFollow::Active {
+    TrexPath outter, inner;
+    float _bind_heading;
+    
+    heading == _bind_heading;
+    
+    0 <= start;
+    end <= FINAL_TICK;
+    temporalDistance(start, duration, end);
+
+    outter == surveys.ref;
+    inner == surveys.inner;
+    
+    scale_inner * inner.distance == scale * outter.distance;
+
+    met_by(Inactive idle);
+}
+
+Whale::locate {
+    0 <= start;
+    start <= FINAL_TICK;
+
+    contains_start(effect PosState.Position whale_pos);
+    whale_pos.object == object.estate;
+   
+
+    contained_by(condition WhaleFollow.Active active);
+    active.object == object.survey;
+
+    ends_during(condition SurveyCount.Holds cpt);
+    cpt.object == object.counter;
+
+    float uav_autonomy;
+
+    uav_autonomy == 60.0 * object.uav_minutes;
+
+    int time_to_survey;
+    float tts_f;
+    temporalDistance(start, time_to_survey, cpt.start);
+    ceil(tts_f) == time_to_survey;
+    tts_f * TICK_DURATION <= 0.5*uav_autonomy;
+    
+    
+    // contained_by(condition SurveyCount.Holds cpt);
+    // cpt.object == object.counter; 
+
+    float duration_f;
+    
+    // some basic constraint on its duration
+    temporalDistance(start, duration, end);
+    ceil(duration_f) == duration;
+    duration_f * TICK_DURATION <= uav_autonomy;
+
+}
+
+
+Whale::track {    
+    contained_by(effect WhaleFollow.Active active);
+    active.object == object.survey;
+    active.surveys == surveys;
+    active.heading == heading;
+    active.scale == scale;
+    
+    ends(SurveyCount.Holds cpt);
+    cpt.object == object.counter;
+    precedes(cpt.start, start);
+    
+
+    met_by(condition PosState.Position last_pos);
+    last_pos.object == object.estate;
+
+
+    int end_a, end_b, min_end;
+    DrifterFollow a, b;
+
+    a != b;
+    
+    contains(condition DrifterFollow.Survey survey_a);
+    survey_a.path == surveys.ref;
+    survey_a.size == active.scale;
+    survey_a.lagrangian == false;
+    survey_a.heading == heading;
+    survey_a.center_lat == last_pos.latitude;
+    survey_a.center_lon == last_pos.longitude;
+    temporalDistance(survey_a.end, end_a, end);
+    a == survey_a.object;
+
+    contains(condition DrifterFollow.Survey survey_b);
+    survey_b.path == surveys.inner;
+    survey_b.size == active.scale_inner;
+    survey_b.lagrangian == false;
+    survey_b.heading == heading;
+    survey_b.center_lat == last_pos.latitude;
+    survey_b.center_lon == last_pos.longitude;
+    temporalDistance(survey_b.end, end_b, end);
+    b == survey_b.object;
+
+    min_end == min(end_a, end_b);
+    min_end == 0;
+
+    contains(a.DoSurvey exec_a);
+    exec_a meets survey_a;
+    starts_during(condition a.Inactive idle_a);
+    idle_a meets exec_a;
+    last_pos ends_during idle_a;
+    idle_a ends_during cpt;
+    
+    contains(b.DoSurvey exec_b);
+    exec_b meets survey_b;
+    starts_during(condition b.Inactive idle_b);
+    idle_b meets exec_b;    
+    last_pos ends_during idle_b;
+    idle_b ends_during cpt;
+
+    // cpt.start == max(idle_a.start, idle_b.start, 0);   
+}

@@ -6,7 +6,7 @@ int   FINAL_TICK;
 
 class PosState extends Timeline {
       predicate Position {
-      	float latitiude, longitude;
+      	float latitude, longitude;
 	float depth, height, z;
 
 	duration == 1;

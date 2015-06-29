@@ -31,13 +31,14 @@
  *  ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-#include "TrexAUV.nddl"
+#include "Whale.nddl"
 
 // Model instanciation
 
 // Define the lagrangian paths we use in an abstract form
 TrexPath square = new TrexPath(4.0, -0.5, 0.5);
 TrexPath square_twice = new TrexPath(8.0, -0.5, 0.5);
+survey_pair two_squares = new survey_pair(square, square_twice);
 
 // vehicle timelines
 
@@ -58,16 +59,30 @@ precedes(CUR_DATE, sp_2.end);
 precedes(FINAL_TICK, sp_2.end);
 sp_2.speed.specify(0.75);
 
-// [imc]DBG: auv2.drifter.Survey{center_lat=0.6658485111, center_lon=-0.4966177319, heading=0, lagrangian=1, path=square, size=600}
+// set the whale timeline with uav autonomy to 30mn
 
+Whale  whale = new Whale(30.0);
 
-rejectable(DrifterFollow.Survey survey);
-precedes(0, survey.start);
-precedes(survey.start, FINAL_TICK);
+fact(whale.survey.Inactive idle);
+precedes(idle.start, 0);
+precedes(0, idle.end);
 
-survey.center_lat.specify(0.6658485111);
-survey.center_lon.specify(-0.4966177319);
-survey.heading.specify(0.0);
-survey.lagrangian.specify(true);
-survey.path.specify(square);
-survey.size.specify(600.0);
+fact(whale.counter.Holds init_c);
+init_c.start <= 0;
+init_c.end >= 0;
+init_c.number.specify(0);
+
+rejectable(WhaleFollow.Active follow);
+follow.surveys.specify(two_squares);
+follow.scale.specify(800.0);
+
+// rejectable(DrifterFollow.Survey survey);
+// precedes(0, survey.start);
+// precedes(survey.start, FINAL_TICK);
+
+// survey.center_lat.specify(0.6658485111);
+// survey.center_lon.specify(-0.4966177319);
+// survey.heading.specify(0.0);
+// survey.lagrangian.specify(true);
+// survey.path.specify(square);
+// survey.size.specify(600.0);

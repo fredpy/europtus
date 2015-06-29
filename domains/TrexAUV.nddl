@@ -42,6 +42,17 @@ class DrifterFollow extends Timeline {
     }
 }
 
+DrifterFollow::Survey {
+    meets(Inactive idle);
+
+    float duration_f;
+    // Set my duration to 1 second
+    temporalDistance(start, duration, end);
+    ceil(duration_f) == duration;
+    duration_f * TICK_DURATION == 1.0;   
+}
+
+
 
 class SpeedControl extends Timeline {
     float min_speed, max_speed;
@@ -66,13 +77,15 @@ SpeedControl::Holds {
 
 class AUV {
     action exec_survey {
-	float distance;
+	float distance_from_start, distance;
 	float entry_lat, entry_lon;
 	float exit_lat, exit_lon;
 	// necessarily starts during mission
 	0 <= start;
 	start <= FINAL_TICK;
     }
+
+    action accept_pos {}
 
     DrifterFollow drifter;
     SpeedControl  speed;
@@ -84,6 +97,12 @@ class AUV {
 	estate = new PosState();
     }
 }
+
+AUV::accept_pos {
+    equals(effect PosState.Position my_pos);
+    my_pos.object == object.estate;
+}
+
 
 AUV::exec_survey {
     TrexPath p;
@@ -118,8 +137,10 @@ AUV::exec_survey {
 
     // duration of the survey itself
     int to_final;
-    float duration_f, duration_sec, to_fin_f, to_fin_s;
+    float duration_f, duration_sec, to_fin_f, to_fin_s, half_speed;
 
+    half_speed * 2.0 == sp.speed;
+ 
     temporalDistance(start, duration, end);
     temporalDistance(start, to_final, FINAL_TICK);
     
@@ -130,6 +151,7 @@ AUV::exec_survey {
     to_fin_f * TICK_DURATION == to_fin_s;
     
     distance <= duration_sec * sp.speed;
+    duration_sec * half_speed <= distance;
     distance <= to_fin_s * sp.speed;
     
     // identify my drift speed
@@ -188,9 +210,23 @@ AUV::exec_survey {
     ll_displace(o_lat, o_lon, a_north, a_east, entry_lat, entry_lon);
     ll_displace(o_lat, o_lon, z_north, z_east, exit_lat, exit_lon);
 
-    // Now need to ensure that we have the proper time
-    // to cover the distance from the initial location  
+    // compute my distance to the survey entry point
+    int time_since_pos;
+    float time_p_f, time_p_s, start_f, start_s;
 
+    distance_from_start == ll_dist(pos.latitude, pos.longitude, entry_lat, entry_lon);
+
+    // distance from initial pos
+    temporalDistance(pos.start, time_since_pos, start);
+    time_since_pos == ceil(time_p_f);
+    time_p_s == time_p_f * TICK_DURATION;
+    distance_from_start <= time_p_s * sp.speed;
+    time_p_s * half_speed <= distance_from_start;
+
+    // distance from initial tick
+    start == ceil(start_f);
+    start_s == start_f * TICK_DURATION;
+    distance_from_start <= start_s * sp.speed;
     
 }
 
