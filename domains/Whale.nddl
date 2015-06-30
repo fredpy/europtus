@@ -9,6 +9,16 @@ class survey_pair {
     }
 }
 
+class WhalePos extends Timeline {
+    predicate Position {
+	float latitude, longitude;
+    }
+
+    WhalePos() {
+	super();
+    }
+}
+
 class WhaleFollow extends Timeline {
       predicate Inactive {}
       predicate Active {
@@ -40,7 +50,7 @@ SurveyCount::Holds {
 
 class Whale {
     WhaleFollow survey;
-    PosState    estate;
+    WhalePos    estate;
     SurveyCount counter;
     float       uav_minutes;
 
@@ -55,7 +65,7 @@ class Whale {
 
     Whale(float uav_mins) {
 	survey = new WhaleFollow();
-	estate = new PosState();
+	estate = new WhalePos();
 	counter = new SurveyCount();
 	uav_minutes = uav_mins;
     }
@@ -84,7 +94,7 @@ Whale::locate {
     0 <= start;
     start <= FINAL_TICK;
 
-    contains_start(effect PosState.Position whale_pos);
+    contains_start(effect WhalePos.Position whale_pos);
     whale_pos.object == object.estate;
    
 
@@ -130,7 +140,7 @@ Whale::track {
     precedes(cpt.start, start);
     
 
-    met_by(condition PosState.Position last_pos);
+    met_by(condition WhalePos.Position last_pos);
     last_pos.object == object.estate;
 
 

@@ -1,4 +1,16 @@
-#include "Position.nddl"
+#include "europtus.nddl"
+
+class AUVPos extends Timeline {
+
+    predicate Position {
+      	float latitude, longitude;
+	float depth, height, z;
+
+	duration == 1;
+    }
+
+    AUVPos() {}
+}
 
 class TrexPath {
   float distance;
@@ -85,24 +97,16 @@ class AUV {
 	start <= FINAL_TICK;
     }
 
-    action accept_pos {}
-
     DrifterFollow drifter;
     SpeedControl  speed;
-    PosState      estate;
+    AUVPos        estate;
 
     AUV(float mi, float ma) {
 	drifter = new DrifterFollow();
 	speed = new SpeedControl(mi, ma);
-	estate = new PosState();
+	estate = new AUVPos();
     }
 }
-
-AUV::accept_pos {
-    equals(effect PosState.Position my_pos);
-    my_pos.object == object.estate;
-}
-
 
 AUV::exec_survey {
     TrexPath p;
@@ -115,7 +119,7 @@ AUV::exec_survey {
     
     // condition: was idling, have position, and have a speed control
     met_by(condition DrifterFollow.Inactive idle);
-    after(condition PosState.Position pos);
+    after(condition AUVPos.Position pos);
     idle contains pos;
     contained_by(condition SpeedControl.Holds sp);
 
