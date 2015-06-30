@@ -79,6 +79,23 @@ namespace {
       return std::pair<std::string, std::string>();
   }
   
+  void log_echo(tlog::entry::pointer msg) {
+    
+    if( msg->has_content() ) {
+      std::ostringstream oss;
+      
+      if( msg->is_dated() ) {
+        oss<<'['<<msg->date()<<']';
+      }
+      if( msg->kind()!=tlog::info && !msg->kind().empty() ) {
+        oss<<msg->kind()<<':';
+      }
+      if( !oss.str().empty() )
+        oss.put(' ');
+      std::cout<<oss.str()<<msg->content()<<std::endl;
+    }
+  }
+  
 
 }
 
@@ -151,7 +168,8 @@ namespace boost {
     
     v = boost::posix_time::duration_from_string(s);
   }
-
+  
+  
 }
 
 
@@ -211,6 +229,7 @@ int main(int argc, char *argv[]) {
      "Load europa solver configuration from <file>")
     ("log", po::value<std::string>(&log_file)->implicit_value(log_file)->value_name("<file>"),
      "write log messages in <file>")
+    ("out", "Additionally print log messages in standard output")
     ("end_date", po::value<boost::posix_time::ptime>()->value_name("<date>"),
      "Final tick date in posix format (YYYY-MM-DDTHH:MM:SS[TZ]) "
      "or just time of day (HH:MM:SS[TZ]) "
@@ -219,6 +238,7 @@ int main(int argc, char *argv[]) {
      "Mission max duration\n"
      "If both duration and end_date are specified the shortest is taken")
     ("daemon", "run as a daemon")
+    ("test", "Enable injection of test observation")
     ("help", "Produce this help message")
     ("version,v", "Print version number");
   
@@ -358,7 +378,8 @@ int main(int argc, char *argv[]) {
   
   if( opt_val.count("daemon") ) {
     log(tlog::null, tlog::info)<<"Running as dameon with pid="<<getpid();
-  }
+  } else if( opt_val.count("out") )
+    log.direct_connect(log.stranded(log_echo));
 
   
   // log.msg(tlog::null, tlog::info)<<"Test";
@@ -425,6 +446,31 @@ int main(int argc, char *argv[]) {
     while( clock.active() ) {
       clock.sleep();
       cur = clock.tick();
+      
+      if( opt_val.count("test") ) {
+        tr::goal_id g;
+        
+        if( cur==1 ) {
+          g = MAKE_SHARED<tr::Goal>("auv1.drifter", "Inactive");
+          g->restrictStart(tr::IntegerDomain(-20));
+        }
+      
+        if( cur==2 ) {
+          g = MAKE_SHARED<tr::Goal>("auv2.drifter", "Inactive");
+          g->restrictStart(tr::IntegerDomain(-18));
+        }
+      
+        if( cur==12 ) {
+          g = MAKE_SHARED<tr::Goal>("whale.estate", "Position");
+          g->restrictStart(tr::IntegerDomain(3));
+          g->restrictAttribute(tr::Variable("latitude",
+                                          tr::FloatDomain(0.6658485111)));
+          g->restrictAttribute(tr::Variable("longitude",
+                                            tr::FloatDomain(-0.4966177319)));
+        }
+        if( g )
+          europa.observation(g);
+      }
     }
     // Not necessary as destruction does it but always better
     // to leave clean
