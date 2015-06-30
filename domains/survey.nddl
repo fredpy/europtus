@@ -57,7 +57,7 @@ fact(auv2.speed.Holds sp_2);
 precedes(sp_2.start, 0);
 precedes(CUR_DATE, sp_2.end);
 precedes(FINAL_TICK, sp_2.end);
-sp_2.speed.specify(0.75);
+sp_2.speed.specify(1.25);
 
 // set the whale object with uav autonomy to 30mn
 

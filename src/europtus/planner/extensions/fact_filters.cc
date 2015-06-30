@@ -47,7 +47,7 @@ namespace tu=TREX::utils;
  */
 
 fact_filter::fact_filter(eu::TiXmlElement const &cfg)
-:eu_s::FlawFilter(cfg, false), m_pos(false) {
+:eu_s::FlawFilter(cfg, true), m_pos(false) {
   char const *invert = cfg.Attribute("invert");
   
   if( invert!=NULL ) {
@@ -57,11 +57,13 @@ fact_filter::fact_filter(eu::TiXmlElement const &cfg)
 
 
 bool fact_filter::test(eu::EntityId const &entity) {
+  
   if( eu::TokenId::convertable(entity) ) {
     eu::TokenId tok(entity);
     
     if( tok->isFact() )
       return !m_pos;
+    
     return m_pos;
   }
   return false; // do not filter non token

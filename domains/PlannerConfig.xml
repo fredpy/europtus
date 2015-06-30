@@ -3,24 +3,24 @@
        policy="PartiallyContained"/ -->
 
   <ThreatManager defaultPriority="6">
-    <FactFilter invert="1"/>
-    <FlawHandler component="EuroptusThreatHandler"/>
+       <FlawFilter component="FactFilter" invert="1"/>
+       <FlawHandler component="EuroptusThreatHandler"/>
   </ThreatManager>
   
   
   <ThreatManager defaultPriority="10">
-    <FactFilter />
-    <FlawHandler component="EuroptusThreatHandler"/>
+       <FlawFilter component="FactFilter" />
+       <FlawHandler component="EuroptusThreatHandler"/>
   </ThreatManager>
   
   <OpenConditionManager defaultPriority="12" component="EarliestFirst" >
-    <FactFilter invert="1" />
+    <FlawFilter component="FactFilter" invert="1"/>
     <FlawHandler component="StandardOpenConditionHandler"/>
   </OpenConditionManager>
   
 
   <OpenConditionManager defaultPriority="20" component="EarliestFirst">
-    <FactFilter  />
+    <FlawFilter component="FactFilter" />
     <FlawHandler component="StandardOpenConditionHandler"/>
   </OpenConditionManager>
 
