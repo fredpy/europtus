@@ -56,6 +56,58 @@ namespace te=TREX::europa;
 namespace eu=EUROPA;
 namespace eu_s=eu::SOLVERS;
 
+namespace {
+  
+  std::string const implicit_s("implicit_");
+  
+  std::ostream &print_variable(std::ostream &out, std::string const &name,
+                               eu::Domain const &dom) {
+    out<<name;
+    if( dom.isSingleton() )
+      out<<"="<<dom.toString(dom.getSingletonValue());
+    else if( dom.areBoundsFinite() )
+      out<<"="<<dom.toString();
+    return out;
+  }
+  
+  std::ostream &print_token(std::ostream &out, eu::Token const &tok) {
+    out<<'['<<tok.getKey()<<"] "<<tok.getObject()->toString()<<"."
+      <<tok.getUnqualifiedPredicateName().toString()<<"(";
+    
+    typedef std::vector<eu::ConstrainedVariableId> var_set;
+    var_set vars = tok.parameters();
+    bool first = true;
+    
+    if( tok.start()->lastDomain().areBoundsFinite() ) {
+      print_variable(out, "start", tok.start()->lastDomain());
+      first = false;
+    }
+    if( tok.end()->lastDomain().areBoundsFinite() ) {
+      if( first )
+        first = false;
+      else
+        out<<", ";
+      print_variable(out, "end", tok.end()->lastDomain());
+    }
+    
+    for(var_set::const_iterator i=vars.begin(); vars.end()!=i; ++i) {
+      std::string name = (*i)->getName().toString();
+      if( name.compare(0, implicit_s.size(), implicit_s)!=0 ) {
+        if( first )
+          first = false;
+        else
+          out<<", ";
+        print_variable(out, name, (*i)->lastDomain());
+      }
+    }
+    
+    
+    
+    return out<<")";
+  }
+  
+}
+
 /*
  * class europtus::planner::assembly::pimpl::token_proxy
  */
@@ -80,11 +132,7 @@ void assembly::pimpl::token_proxy::notifyRemoved(const eu::TokenId& token) {
 
 void assembly::pimpl::token_proxy::notifyActivated(const eu::TokenId& token) {
   if( m_self.is_fact(token) ) {
-    m_self.log("FACT")<<token->getObject()->toString()<<"."<<token->getUnqualifiedPredicateName().toString()
-    <<"\n\tfrom "<<token->start()->lastDomain().toString()
-    <<"\n\tduring "<<token->duration()->lastDomain().toString()
-    <<"\n\tto "<<token->end()->lastDomain().toString()
-    <<"\n\tid "<<token->getKey();
+    print_token(m_self.log("FACT"), *token);
   }
 }
 
@@ -94,12 +142,8 @@ void assembly::pimpl::token_proxy::notifyDeactivated(const eu::TokenId& token) {
 void assembly::pimpl::token_proxy::notifyMerged(const eu::TokenId& token) {
   if( m_self.is_fact(token) ) {
     eu::TokenId me = token->getActiveToken();
-    
-    m_self.log("FACT")<<me->getObject()->toString()<<"."<<me->getUnqualifiedPredicateName().toString()
-    <<"\n\tfrom "<<me->start()->lastDomain().toString()
-    <<"\n\tduring "<<me->duration()->lastDomain().toString()
-    <<"\n\tto "<<me->end()->lastDomain().toString()
-    <<"\n\tid "<<token->getKey();
+    print_token(print_token(m_self.log("FACT"), *token)<<"\n -> ",
+                *me);
   }
 }
 
@@ -304,18 +348,42 @@ void assembly::pimpl::do_step() {
     } else {
       if( m_cstr->provenInconsistent() ) {
         size_t steps = m_solver->getStepCount(), bsteps;
-        m_solver->backjump(1);
-        bsteps = m_solver->getStepCount();
-        if( steps>=bsteps )
-          m_lost += steps-bsteps;
+        eu::DbClientId cli = m_plan->getClient();
+        
+        // Before I need to relax my own mess
+        for(token_almanach::iterator i=m_forcefully_injected.begin();
+            m_forcefully_injected.end()!=i; ++i) {
+          if( !i->second->isInactive() )
+            cli->cancel(i->second);
+        }
+        m_forcefully_injected.clear();
+        m_cstr->propagate();
+        if( m_cstr->provenInconsistent() ) {
+          m_solver->backjump(1);
+          bsteps = m_solver->getStepCount();
+          if( steps>=bsteps )
+            m_lost += steps-bsteps;
+        }
         send_step();
       } else if( m_solver->getOpenDecisions().empty() &&
                 !m_cstr->pending() ) {
         end_plan();
       } else {
-        log()<<m_solver->printOpenDecisions()<<std::endl;
+        std::multimap<eu_s::Priority, std::string>
+        decisions = m_solver->getOpenDecisions();
+        
+        std::ostringstream oss;
+        
+        oss<<"Decisions left: "<<decisions.size();
+        if( !decisions.empty() ) {
+          std::multimap<eu_s::Priority, std::string>::const_iterator
+          d = decisions.begin();
+          oss<<"\n   - Next decision: <"<<d->first<<", "<<d->second<<">";
+        }
+        
         if( m_solver->getDepth()>0 )
-          log()<<"last decision: "<<m_solver->getLastExecutedDecision();
+          oss<<"\n   - Last decision: "<<m_solver->getLastExecutedDecision();
+        log()<<oss.str();
         
         m_solver->step();
         send_step();
@@ -334,9 +402,9 @@ void assembly::pimpl::end_plan() {
       <<(steps-m_steps)<<" steps:\n"
     <<"  - steps="<<steps<<"\n"
     <<"  - depth="<<m_solver->getDepth()<<"\n"
-//    <<"==============================================================\n"
-//    <<m_plan->toString()
-//    <<"\n=============================================================="
+    <<"==============================================================\n"
+    <<m_plan->toString()
+    <<"\n=============================================================="
     <<std::endl;
     m_steps = steps;
   }
@@ -462,7 +530,7 @@ void assembly::pimpl::add_goal(tr::goal_id g) {
 
 
 eu::ConstrainedVariableId
-assembly::pimpl::restict_global(char const *name,
+assembly::pimpl::restrict_global(char const *name,
                                 char const *type,
                                 eu::Domain const &base) {
   eu::ConstrainedVariableId ret;
@@ -552,34 +620,62 @@ void assembly::pimpl::update_state(clock::tick_type date) {
     if( m_plan_tok.isNoId() ) {
       log(tlog::error)<<"No curent plan state token";
       exit(5);
-    } else if( m_plan_tok->getUnqualifiedPredicateName()!="planning" ) {
-      log(tlog::error)<<"Plan state token is not planning";
-      exit(5);
     }
     
-    eu::IntervalIntDomain now(date);
-    eu::TokenId current = m_plan_tok;
+    eu::IntervalIntDomain now(date),
+    future(static_cast<eu::eint::basis_type>(date+1),
+           std::numeric_limits<eu::eint>::infinity());
+    eu::TokenId current = m_plan_tok, tok;
     
     if( m_plan_tok->isMerged() )
       current = m_plan_tok->getActiveToken();
     
     if( m_planning && m_confirmed ) {
-      log("PLAN")<<"I am planning";
-      log("PLAN")<<"Current plan:\n"<<m_plan->toString();
-      if( m_plan_tok->end()->baseDomain().getUpperBound()<=now.getLowerBound() ) {
-        m_plan_tok = new_token(m_plan_state, "planning", true);
-        m_plan_tok->start()->restrictBaseDomain(now);
-      }
-      eu::IntervalIntDomain future(static_cast<eu::eint::basis_type>(date+1),
-                                   std::numeric_limits<eu::eint>::infinity());
-      m_plan_tok->end()->restrictBaseDomain(future);
-    } else if( !m_planning ) {
-      if( current->end()->lastDomain().intersects(now) ) {
-        log("PLAN")<<"I am not planning";
+      if( m_plan_tok->getUnqualifiedPredicateName()!="planning" ) {
+        tok = new_token(m_plan_state, "planning", true);
+        tok->start()->restrictBaseDomain(now);
         m_plan_tok->end()->restrictBaseDomain(now);
-        m_cstr->propagate();
-        log("PLAN")<<m_plan->toString();
+        m_plan_tok = tok;
       }
+      m_plan_tok->end()->restrictBaseDomain(future);
+      // No need to propagaet as we are in planning
+    } else if( !m_planning ) {
+      if( m_plan_tok->getUnqualifiedPredicateName()!="execute" ) {
+        
+        // Look for my successor:
+        // Assumptions:
+        //   - I assume that planning has the rule meets(execute)
+        //   - I "know" that I have no more flaw as m_planning=false
+        //   - hence I should have successor to m_plan_tok which is like me
+        typedef std::list<eu::TokenId> tok_seq;
+        tok_seq const &toks = m_plan_state->getTokenSequence();
+        tok_seq::const_iterator i = toks.begin();
+        
+        for( ; toks.end()!=i && current!=(*i); ++i);
+        if( toks.end()==i ) {
+          log(tlog::error)<<"Failed to find my previous \"planning\"";
+          exit(5);
+        } else {
+          ++i;
+          if( toks.end()==i ) {
+            log(tlog::error)<<"My previous planning has no successor";
+            exit(5);
+          } else if( (*i)->getUnqualifiedPredicateName()!="execute" ) {
+            log(tlog::error)<<"The successor to my planning is not \"execute\"";
+            exit(5);
+          }
+          tok = new_token(m_plan_state, "execute", true);
+          tok->start()->restrictBaseDomain(now);
+          eu::DbClientId cli = m_plan->getClient();
+          cli->merge(tok, *i);
+          token_almanach::value_type val(m_solver->getDepth(), tok);
+          m_forcefully_injected.insert(val);
+          m_plan_tok->end()->restrictBaseDomain(now);
+          m_plan_tok = tok;
+        }
+      }
+      m_plan_tok->end()->restrictBaseDomain(future);
+      m_cstr->propagate();
     }
   }
 }
@@ -588,11 +684,11 @@ void assembly::pimpl::init_clock() {
   
   double
     secs = ch::duration_cast< ch::duration<double> >(m_clock.tick_duration()).count();
-  restict_global("TICK_DURATION", eu::FloatDT::NAME().c_str(),
+  restrict_global("TICK_DURATION", eu::FloatDT::NAME().c_str(),
                  eu::IntervalDomain(secs));
-  m_cur = restict_global(assembly::s_now.c_str(), eu::IntDT::NAME().c_str(),
+  m_cur = restrict_global(assembly::s_now.c_str(), eu::IntDT::NAME().c_str(),
                          eu::IntervalIntDomain());
-  m_last = restict_global("FINAL_TICK", eu::IntDT::NAME().c_str(),
+  m_last = restrict_global("FINAL_TICK", eu::IntDT::NAME().c_str(),
                           eu::IntervalIntDomain());
   if( m_planning )
     m_plan_since = m_clock.current();

@@ -110,9 +110,12 @@ namespace europtus {
       void set_plan_time_out(clock::tick_type value);
       
     private:
-      EUROPA::ConstrainedVariableId restict_global(char const *name,
-                                                   char const *type,
-                                                   EUROPA::Domain const &base);
+      typedef std::multimap<size_t, EUROPA::TokenId> token_almanach;
+      token_almanach m_forcefully_injected;
+      
+      EUROPA::ConstrainedVariableId restrict_global(char const *name,
+                                                    char const *type,
+                                                    EUROPA::Domain const &base);
       void check_planning();
       void send_step();
       void do_step();

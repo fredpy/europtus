@@ -43,7 +43,7 @@ project(europtus)
 
 set(PROJECT_MAJOR 0)
 set(PROJECT_MINOR 1)
-set(PROJECT_PATCH 0)
+set(PROJECT_PATCH 1)
 
 # Look for boost
 find_package(Boost 1.47 REQUIRED COMPONENTS

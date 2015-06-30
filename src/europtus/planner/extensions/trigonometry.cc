@@ -153,9 +153,9 @@ return r
   inline boost_flt deg_to_rad(boost_flt const &dom) {
     return pi<boost_flt>()*dom/180.0;
   }
-  inline boost_flt rad_to_deg(boost_flt const &dom) {
-    return 180.0*dom/pi<boost_flt>();
-  }
+//  inline boost_flt rad_to_deg(boost_flt const &dom) {
+//    return 180.0*dom/pi<boost_flt>();
+//  }
   
 }
 
