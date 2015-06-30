@@ -103,8 +103,8 @@ namespace {
     return out<<")";
   }
   
-  tu::Symbol s_justify("!!");
-  tu::Symbol s_unjustify("??");
+  tu::Symbol s_justify("just");
+  tu::Symbol s_unjustify("unjust");
   
 }
 
@@ -133,6 +133,13 @@ void assembly::pimpl::token_proxy::notifyRemoved(const eu::TokenId& token) {
 void assembly::pimpl::token_proxy::notifyActivated(const eu::TokenId& token) {
   if( token->isFact() )
     m_self.justify(token, token);
+  else {
+    if( m_self.is_condition(token) ) {
+      eu::TokenId master = token->master();
+      if( m_self.is_action(master) && m_self.justified(master) )
+        m_self.justify(token, master);
+    }
+  }
 }
 
 void assembly::pimpl::token_proxy::notifyDeactivated(const eu::TokenId& token) {
@@ -142,8 +149,16 @@ void assembly::pimpl::token_proxy::notifyDeactivated(const eu::TokenId& token) {
 void assembly::pimpl::token_proxy::notifyMerged(const eu::TokenId& token) {
   eu::TokenId me = token->getActiveToken();
 
-  if( token->isFact() )
-    m_self.justify(me, token);
+  if( token->isFact() ) {
+    m_self.justify(token, token);
+  } else {
+    if( m_self.is_condition(token) ) {
+      eu::TokenId master = token->master();
+      if( m_self.is_action(master) && m_self.justified(master) ) {
+        m_self.justify(token, master);
+      }
+    }
+  }
 }
 
 void assembly::pimpl::token_proxy::notifySplit(const eu::TokenId& token) {
@@ -259,37 +274,107 @@ bool assembly::pimpl::is_fact(eu::TokenId const &tok,
 
 
 bool assembly::pimpl::justified(eu::TokenId tok) const {
+  if( tok->isFact() )
+    return true;
+  eu::TokenId me = tok;
+  if( tok->isMerged() )
+    me = tok->getActiveToken();
+
   token_map::left_const_iterator from, to;
-  boost::tie(from, to) = m_justified.left.equal_range(tok);
+  boost::tie(from, to) = m_justified.left.equal_range(me);
   return from!=to;
 }
+
+bool assembly::pimpl::is_action(eu::TokenId const &tok) const {
+  return tok.isId() && tok->hasAttributes(eu::PSTokenType::ACTION);
+}
+
+bool assembly::pimpl::is_predicate(eu::TokenId const &tok) const {
+  return tok.isId() && tok->hasAttributes(eu::PSTokenType::PREDICATE);
+}
+
+bool assembly::pimpl::is_condition(eu::TokenId  const &tok) const {
+  return tok.isId() && tok->hasAttributes(eu::PSTokenType::CONDITION);
+}
+
+bool assembly::pimpl::is_effect(eu::TokenId const &tok) const {
+  return tok.isId() && tok->hasAttributes(eu::PSTokenType::EFFECT);
+}
+
+void assembly::pimpl::effect_for(eu::TokenId const &tok,
+                                 eu::TokenSet &actions,
+                                 bool recurse) const {
+  if( is_effect(tok) )
+    actions.insert(tok->master());
+  if( tok->isMerged() && recurse )
+    effect_for(tok->getActiveToken(), actions, false);
+  else if( tok->isActive() ) {
+    eu::TokenSet const &merged = tok->getMergedTokens();
+    for(eu::TokenSet::const_iterator m=merged.begin(); merged.end()!=m; ++m)
+      effect_for(*m, actions, false);
+  }
+}
+
 
 // manipulators
 
 void assembly::pimpl::justify(eu::TokenId tok, eu::TokenId just) {
-  token_map::left_const_iterator from, to, i;
-  boost::tie(from, to) = m_justified.left.equal_range(tok);
-  if( from!=to ) {
-    // it was justifed but was it self justified ?
-    for(i=from; i!=to; ++i)
-      if( i->second==just )
-        return;
-  }
-  m_justified.insert(token_map::relation(tok, just));
-  if( just==tok ) {
-    print_token(log(s_justify), *tok);
-  } else {
-    print_token(print_token(log(s_justify), *tok)<<"\n <- ", *just);
+  
+  if( !tok->isInactive() ) {
+    token_map::left_const_iterator from, to, i;
+    boost::tie(from, to) = m_justified.left.equal_range(tok);
+  
+    if( from!=to ) {
+      // it was justifed but was it self justified ?
+      for(i=from; i!=to; ++i)
+        if( i->second==just )
+          return;
+    }
+    m_justified.insert(token_map::relation(tok, just));
+    if( just==tok ) {
+      print_token(log(s_justify), *tok);
+    } else {
+      print_token(print_token(log(s_justify), *tok)<<"\n <- ", *just);
+    }
+  
+    if( tok->isMerged() )
+      justify(tok->getActiveToken(), tok);
+    else if( tok->isActive() ) {
+//      if( is_action(tok) ) {
+//        // if an action is justified I can assume that all of its conditions are (??)
+      // the answer is either no or I need to change my model
+//        eu::TokenSet const &sl = tok->slaves();
+//        for(eu::TokenSet::const_iterator i=sl.begin(); sl.end()!=i; ++i) {
+//          eu::TokenId s = *i;
+//          if( is_condition(s) )
+//            justify(s, tok);
+//        }
+//      }
+      // an effect justify its action (??)
+      eu::TokenSet actions;
+      effect_for(tok, actions);
+      for(eu::TokenSet::const_iterator a=actions.begin(); actions.end()!=a; ++a)
+        justify(*a, tok);
+    }
   }
 }
 
 void assembly::pimpl::unjustify(eu::TokenId tok) {
-  token_map::right_iterator from, to;
+  token_map::right_iterator from, to, i;
   boost::tie(from, to) = m_justified.right.equal_range(tok);
-  // TODO do a better job at removing things
+  
   if( from!=to ) {
+    eu::TokenSet to_check;
+    for(i=from; i!=to; ++i) {
+      if( i->second!=tok )
+        to_check.insert(i->second);
+    }
     print_token(log(s_unjustify)<<"(self) ", *tok);
     m_justified.right.erase(from, to);
+    for (eu::TokenSet::const_iterator t=to_check.begin(); to_check.end()!=t; ++t) {
+      if( !justified(*t) )
+        unjustify(*t);
+    }
   }
 }
 

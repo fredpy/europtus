@@ -116,6 +116,16 @@ namespace europtus {
       typedef std::multimap<size_t, EUROPA::TokenId> token_almanach;
       token_almanach m_forcefully_injected;
       
+      bool is_action(EUROPA::TokenId const &tok) const;
+      bool is_predicate(EUROPA::TokenId const &tok) const;
+      
+      
+      bool is_condition(EUROPA::TokenId  const &tok) const;
+      bool is_effect(EUROPA::TokenId const &tok) const;
+      
+      void effect_for(EUROPA::TokenId const &tok, EUROPA::TokenSet &actions,
+                      bool recurse = true) const;
+      
       
       typedef boost::bimaps::multiset_of<EUROPA::TokenId> um_set_of_tok;
       typedef boost::bimap<um_set_of_tok, um_set_of_tok> token_map;
