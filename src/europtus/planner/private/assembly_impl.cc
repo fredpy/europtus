@@ -100,11 +100,11 @@ namespace {
         print_variable(out, name, (*i)->lastDomain());
       }
     }
-    
-    
-    
     return out<<")";
   }
+  
+  tu::Symbol s_justify("!!");
+  tu::Symbol s_unjustify("??");
   
 }
 
@@ -131,23 +131,23 @@ void assembly::pimpl::token_proxy::notifyRemoved(const eu::TokenId& token) {
 }
 
 void assembly::pimpl::token_proxy::notifyActivated(const eu::TokenId& token) {
-  if( m_self.is_fact(token) ) {
-    print_token(m_self.log("FACT"), *token);
-  }
+  if( token->isFact() )
+    m_self.justify(token, token);
 }
 
 void assembly::pimpl::token_proxy::notifyDeactivated(const eu::TokenId& token) {
+  m_self.unjustify(token);
 }
 
 void assembly::pimpl::token_proxy::notifyMerged(const eu::TokenId& token) {
-  if( m_self.is_fact(token) ) {
-    eu::TokenId me = token->getActiveToken();
-    print_token(print_token(m_self.log("FACT"), *token)<<"\n -> ",
-                *me);
-  }
+  eu::TokenId me = token->getActiveToken();
+
+  if( token->isFact() )
+    m_self.justify(me, token);
 }
 
 void assembly::pimpl::token_proxy::notifySplit(const eu::TokenId& token) {
+  m_self.unjustify(token);
 }
 
 void assembly::pimpl::token_proxy::notifyRejected(const eu::TokenId& token) {
@@ -258,7 +258,41 @@ bool assembly::pimpl::is_fact(eu::TokenId const &tok,
 }
 
 
+bool assembly::pimpl::justified(eu::TokenId tok) const {
+  token_map::left_const_iterator from, to;
+  boost::tie(from, to) = m_justified.left.equal_range(tok);
+  return from!=to;
+}
+
 // manipulators
+
+void assembly::pimpl::justify(eu::TokenId tok, eu::TokenId just) {
+  token_map::left_const_iterator from, to, i;
+  boost::tie(from, to) = m_justified.left.equal_range(tok);
+  if( from!=to ) {
+    // it was justifed but was it self justified ?
+    for(i=from; i!=to; ++i)
+      if( i->second==just )
+        return;
+  }
+  m_justified.insert(token_map::relation(tok, just));
+  if( just==tok ) {
+    print_token(log(s_justify), *tok);
+  } else {
+    print_token(print_token(log(s_justify), *tok)<<"\n <- ", *just);
+  }
+}
+
+void assembly::pimpl::unjustify(eu::TokenId tok) {
+  token_map::right_iterator from, to;
+  boost::tie(from, to) = m_justified.right.equal_range(tok);
+  // TODO do a better job at removing things
+  if( from!=to ) {
+    print_token(log(s_unjustify)<<"(self) ", *tok);
+    m_justified.right.erase(from, to);
+  }
+}
+
 
 tlog::stream assembly::pimpl::log(tlog::id_type const &what) const {
   if( m_clock.started() ) {
@@ -611,12 +645,21 @@ void assembly::pimpl::init_plan_state() {
     m_plan_state = obj;
     m_plan_tok = new_token(m_plan_state, "planning", true);
     m_plan_tok->start()->restrictBaseDomain(past);
+//    typedef std::list<eu::TokenId> tok_seq;
+//    tok_seq const &toks = m_plan_state->getTokenSequence();
+//    eu::DbClientId cli = m_plan->getClient();
+//    
+//    if( toks.empty() ) {
+//      cli->constrain(m_plan_state, m_plan_tok, m_plan_tok);
+//      m_cstr->propagate();
+//    } else
+//      log(tlog::warn)<<"did not activate initial planning";
   }
 }
 
 void assembly::pimpl::update_state(clock::tick_type date) {
   // TODO revise this code 
-  if( m_plan_state.isId() ) {
+  if( m_plan_state.isId() && date>0 ) {
     if( m_plan_tok.isNoId() ) {
       log(tlog::error)<<"No curent plan state token";
       exit(5);

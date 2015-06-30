@@ -51,6 +51,9 @@
 # include <boost/enable_shared_from_this.hpp>
 # include <boost/make_shared.hpp>
 
+# include <boost/bimap.hpp>
+# include <boost/bimap/multiset_of.hpp>
+
 
 namespace europtus {
   namespace planner {
@@ -112,6 +115,15 @@ namespace europtus {
     private:
       typedef std::multimap<size_t, EUROPA::TokenId> token_almanach;
       token_almanach m_forcefully_injected;
+      
+      
+      typedef boost::bimaps::multiset_of<EUROPA::TokenId> um_set_of_tok;
+      typedef boost::bimap<um_set_of_tok, um_set_of_tok> token_map;
+      token_map m_justified;
+      
+      bool justified(EUROPA::TokenId tok) const;
+      void justify(EUROPA::TokenId tok, EUROPA::TokenId just);
+      void unjustify(EUROPA::TokenId tok);
       
       EUROPA::ConstrainedVariableId restrict_global(char const *name,
                                                     char const *type,
