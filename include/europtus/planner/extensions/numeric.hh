@@ -55,7 +55,6 @@ namespace europtus {
       EUROPA::Domain &m_root;
       
       static EUROPA::IntervalDomain const s_pos;
-      static EUROPA::edouble const s_epsilon;
     };
 
   }
