@@ -92,7 +92,7 @@ dispatchable::~dispatchable() {
 void dispatchable::dispatch(bool direct) {
   if( connected() ) {
     // TODO: do something to mark the token in assembly
-
+    self().log("foo")<<"dispatch("<<m_token->getPredicateName().toString()<<", "<<direct<<")";
   } else
     debugMsg("europtus", "dispatchable() is not connected to europtus")
 }
