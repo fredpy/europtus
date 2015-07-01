@@ -149,6 +149,7 @@ void assembly::pimpl::token_proxy::notifyDeactivated(const eu::TokenId& token) {
   m_self.unjustify(token);
   if( m_self.is_action(token) )
     m_self.m_guarded.erase(token);
+  m_self.remove_dispatchable(token);
 }
 
 void assembly::pimpl::token_proxy::notifyMerged(const eu::TokenId& token) {
@@ -334,6 +335,31 @@ void assembly::pimpl::effect_for(eu::TokenId const &tok,
 
 // manipulators
 
+
+bool assembly::pimpl::add_dispatchable(EUROPA::TokenId tok, bool direct) {
+  if( tok.isId() ) {
+    dispatch_table::iterator pos;
+    bool inserted;
+    
+    boost::tie(pos, inserted) = m_dispatch.insert(std::make_pair(tok, direct));
+    if( !inserted )
+      pos->second = direct;
+    log("dispatch")<<m_dispatch.size()<<" dispatches";
+    return inserted;
+  }
+  return false;
+}
+
+bool assembly::pimpl::remove_dispatchable(EUROPA::TokenId tok) {
+  if( tok.isId() ) {
+    bool ret = m_dispatch.erase(tok);
+    log("dispatch")<<m_dispatch.size()<<" dispatches";
+    return ret;
+  }
+  return false;
+}
+
+
 void assembly::pimpl::justify(eu::TokenId tok, eu::TokenId just) {
   
   if( !tok->isInactive() ) {
@@ -509,7 +535,9 @@ void assembly::pimpl::do_step() {
           
           std::ostringstream oss;
           
-          oss<<"Decisions left: "<<decisions.size();
+          oss<<"Decisions left: "<<decisions.size()
+          <<"\n   - (steps = "<<(m_solver->getStepCount()+m_lost)
+          <<", depth = "<<m_solver->getDepth()<<")";
           if( !decisions.empty() ) {
             std::multimap<eu_s::Priority, std::string>::const_iterator
             d = decisions.begin();
@@ -518,11 +546,11 @@ void assembly::pimpl::do_step() {
           
           if( m_solver->getDepth()>0 )
             oss<<"\n   - Last decision: "<<m_solver->getLastExecutedDecision();
+          
+          oss<<"\n"<<m_solver->printOpenDecisions();
           log()<<oss.str();
           
-          log()<<"Step start";
           m_solver->step();
-          log()<<"Step end";
           send_step();
         }
       }
@@ -555,6 +583,7 @@ void assembly::pimpl::end_plan() {
   }
   m_planning = false;
   m_confirmed = false;
+  send_exec();
 }
 
 
@@ -741,6 +770,15 @@ bool assembly::pimpl::nddl(std::string path, std::string file) {
   }
 }
 
+void assembly::pimpl::send_exec() {
+  boost::weak_ptr<pimpl> me(shared_from_this());
+  details::europa_protect::strand().send(boost::bind(&pimpl::async_exec,
+                                                     me,
+                                                     &pimpl::check_guarded),
+                                         assembly::exec_p);
+}
+
+
 void assembly::pimpl::check_guarded() {
   eu::eint::basis_type e_next = static_cast<eu::eint::basis_type>(m_clock.current()+1);
   
@@ -806,6 +844,8 @@ void assembly::pimpl::init_plan_state() {
   }
 }
 
+
+
 void assembly::pimpl::update_state(clock::tick_type date) {
   // TODO revise this code 
   if( m_plan_state.isId() && date>0 ) {
@@ -869,7 +909,7 @@ void assembly::pimpl::update_state(clock::tick_type date) {
       m_plan_tok->end()->restrictBaseDomain(future);
       m_cstr->propagate();
       // TODO: need to revise this whole thing so it is managed by assmbly with proper priority
-      check_guarded();
+      send_exec();
     }
   }
 }

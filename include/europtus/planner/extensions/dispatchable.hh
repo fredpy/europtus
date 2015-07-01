@@ -63,6 +63,7 @@ namespace europtus {
       mutable propagator::id   m_prop;
       EUROPA::TokenId m_token;
       EUROPA::Domain &m_var;
+      bool            m_pending;
     };
     
   }

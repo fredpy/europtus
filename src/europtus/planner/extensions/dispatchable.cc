@@ -63,7 +63,8 @@ dispatchable::dispatchable(eu::LabelStr const &name,
                            std::vector<eu::ConstrainedVariableId> const &vars)
 :eu::Constraint(name, propagatorName, cstr, vars),
 m_token(getParentToken(vars[0])),
-m_var(getCurrentDomain(vars[0])) {
+m_var(getCurrentDomain(vars[0])),
+m_pending(true) {
 }
 
 bool dispatchable::connected() const {
@@ -86,19 +87,21 @@ assembly::pimpl &dispatchable::self() const {
 
 
 dispatchable::~dispatchable() {
-  // TODO: do something to clean assembly
+  handleDiscard();
 }
 
 void dispatchable::dispatch(bool direct) {
+  m_pending = false;
   if( connected() ) {
     // TODO: do something to mark the token in assembly
-    self().log("foo")<<"dispatch("<<m_token->getPredicateName().toString()<<", "<<direct<<")";
+    self().log(getName().c_str())<<"dispatch("<<m_token->getPredicateName().toString()<<", "<<direct<<")";
+    self().add_dispatchable(m_token, direct);
   } else
     debugMsg("europtus", "dispatchable() is not connected to europtus")
 }
 
 void dispatchable::handleExecute() {
-  if( m_token.isId() && m_token->isActive() ) {
+  if( m_token.isId() && m_token->isActive() && m_pending ) {
     eu::BoolDomain true_dom(true);
   
     typedef std::vector<eu::ConstrainedVariableId> scope;
@@ -107,8 +110,12 @@ void dispatchable::handleExecute() {
     for(scope::const_iterator v = vars.begin(); vars.end()!=v; ++v) {
       eu::Domain const &d = getCurrentDomain(*v);
       
-      if( !d.isSingleton() )
+      if( !d.isSingleton() ) {
+        if( connected() )
+          self().log(getName().c_str())<<m_token->getPredicateName().toString()<<"("
+          <<m_token->getKey()<<") still guarded by "<<(*v)->getName().toString();
         return;
+      }
     }
     // at this point I know that all domains are singleton (including m_var)
     bool direct = (m_var.getSingletonValue()==true_dom.getSingletonValue());
@@ -120,4 +127,9 @@ void dispatchable::handleExecute() {
 
 void dispatchable::handleDiscard() {
   // TODO: do somethign to clean assembly
+  if( !m_pending && connected() ) {
+    self().log(getName().c_str())<<"undispatch("<<m_token->getPredicateName().toString()<<")";
+    self().remove_dispatchable(m_token);
+    m_pending = true;
+  }
 }
