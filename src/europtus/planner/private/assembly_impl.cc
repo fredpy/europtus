@@ -138,12 +138,16 @@ void assembly::pimpl::token_proxy::notifyActivated(const eu::TokenId& token) {
       eu::TokenId master = token->master();
       if( m_self.is_action(master) && m_self.justified(master) )
         m_self.justify(token, master);
+    } else if( m_self.is_action(token) ) {
+      m_self.m_guarded.insert(token);
     }
   }
 }
 
 void assembly::pimpl::token_proxy::notifyDeactivated(const eu::TokenId& token) {
   m_self.unjustify(token);
+  if( m_self.is_action(token) )
+    m_self.m_guarded.erase(token);
 }
 
 void assembly::pimpl::token_proxy::notifyMerged(const eu::TokenId& token) {
@@ -413,19 +417,14 @@ void assembly::pimpl::check_planning() {
     if( m_cstr->provenInconsistent() || m_cstr->pending() ||
        !( m_solver->noMoreFlaws() && m_solver->getOpenDecisions().empty() ) ) {
       if( !m_planning ) {
-//        log("PLAN")<<"SWitched to planning: "
-//        <<"\n\t inconsistent="<<m_cstr->provenInconsistent()
-//        <<"\n\t pending="<<m_cstr->pending()
-//        <<"\n\t flaws="<<(!m_solver->noMoreFlaws());
-//        if( !m_solver->noMoreFlaws() )
-//          log("PLAN")<<"Faws:\n"<<m_solver->printOpenDecisions();
-        
+        log()<<"Resuming planning.";
         m_planning = true;
         m_confirmed = false;
         m_steps = m_solver->getStepCount()+m_lost;
         if( m_clock.started() )
           m_plan_since = m_clock.current();
       } else {
+        log()<<"New plan step.";
         m_confirmed = true;
         if( m_max_delay && m_clock.started() ) {
           clock::tick_type delay = m_clock.current()-m_plan_since;
@@ -446,7 +445,10 @@ void assembly::pimpl::check_planning() {
                                         me,
                                         &pimpl::do_step),
                             assembly::plan_p);
+      } else {
+        log(tlog::error)<<"already have a pending step";
       }
+      
     } else if( m_planning ) {
       end_plan();
     }
@@ -456,60 +458,72 @@ void assembly::pimpl::check_planning() {
 }
 
 void assembly::pimpl::do_step() {
-  m_pending = false;
-  if( m_planning ) {
-    if( m_solver->isExhausted() ) {
-      log(tlog::error)<<"Solver is exhausted (depth="<<m_solver->getDepth()
-      <<", steps="<<(m_solver->getStepCount()+m_lost)<<")";
-      m_planning = false;
-      // TODO I need to handle this one way ... do not know how yet
-      // m_solver->reset();
-    } else {
-      if( m_cstr->provenInconsistent() ) {
-        size_t steps = m_solver->getStepCount(), bsteps;
-        eu::DbClientId cli = m_plan->getClient();
-        
-        // Before I need to relax my own mess
-        for(token_almanach::iterator i=m_forcefully_injected.begin();
-            m_forcefully_injected.end()!=i; ++i) {
-          if( !i->second->isInactive() )
-            cli->cancel(i->second);
-        }
-        m_forcefully_injected.clear();
-        m_cstr->propagate();
-        if( m_cstr->provenInconsistent() ) {
-          m_solver->backjump(1);
-          bsteps = m_solver->getStepCount();
-          if( steps>=bsteps )
-            m_lost += steps-bsteps;
-        }
-        send_step();
-      } else if( m_solver->getOpenDecisions().empty() &&
-                !m_cstr->pending() ) {
-        end_plan();
+  log()<<"Executing step";
+  try {
+    m_pending = false;
+    if( m_planning ) {
+      if( m_solver->isExhausted() ) {
+        log(tlog::error)<<"Solver is exhausted (depth="<<m_solver->getDepth()
+        <<", steps="<<(m_solver->getStepCount()+m_lost)<<")";
+        m_planning = false;
+        // TODO I need to handle this one way ... do not know how yet
+        // m_solver->reset();
       } else {
-        std::multimap<eu_s::Priority, std::string>
-        decisions = m_solver->getOpenDecisions();
-        
-        std::ostringstream oss;
-        
-        oss<<"Decisions left: "<<decisions.size();
-        if( !decisions.empty() ) {
-          std::multimap<eu_s::Priority, std::string>::const_iterator
-          d = decisions.begin();
-          oss<<"\n   - Next decision: <"<<d->first<<", "<<d->second<<">";
+        if( m_cstr->provenInconsistent() ) {
+          size_t steps = m_solver->getStepCount(), bsteps;
+          eu::DbClientId cli = m_plan->getClient();
+          
+          // Before I need to relax my own mess
+          for(token_almanach::iterator i=m_forcefully_injected.begin();
+              m_forcefully_injected.end()!=i; ++i) {
+            if( !i->second->isInactive() )
+              cli->cancel(i->second);
+          }
+          m_forcefully_injected.clear();
+          m_cstr->propagate();
+          if( m_cstr->provenInconsistent() ) {
+            m_solver->backjump(1);
+            bsteps = m_solver->getStepCount();
+            if( steps>=bsteps )
+              m_lost += steps-bsteps;
+          }
+          send_step();
+        } else if( m_solver->getOpenDecisions().empty() &&
+                  !m_cstr->pending() ) {
+          end_plan();
+        } else {
+          std::multimap<eu_s::Priority, std::string>
+          decisions = m_solver->getOpenDecisions();
+          
+          std::ostringstream oss;
+          
+          oss<<"Decisions left: "<<decisions.size();
+          if( !decisions.empty() ) {
+            std::multimap<eu_s::Priority, std::string>::const_iterator
+            d = decisions.begin();
+            oss<<"\n   - Next decision: <"<<d->first<<", "<<d->second<<">";
+          }
+          
+          if( m_solver->getDepth()>0 )
+            oss<<"\n   - Last decision: "<<m_solver->getLastExecutedDecision();
+          log()<<oss.str();
+          
+          log()<<"Step start";
+          m_solver->step();
+          log()<<"Step end";
+          send_step();
         }
-        
-        if( m_solver->getDepth()>0 )
-          oss<<"\n   - Last decision: "<<m_solver->getLastExecutedDecision();
-        log()<<oss.str();
-        
-        m_solver->step();
-        send_step();
       }
-    }
-  } else
-    log(tlog::warn)<<"do_step while not planning";
+    } else
+      log(tlog::warn)<<"do_step while not planning";
+  } catch(std::exception const &e) {
+    log(tlog::error)<<"exception during step: "<<e.what();
+    debugMsg("europtus", e.what());
+    exit(1);
+  } catch(...) {
+    log(tlog::error)<<"unknown exception during step";
+    exit(1);
+  }
 }
 
 
@@ -715,6 +729,44 @@ bool assembly::pimpl::nddl(std::string path, std::string file) {
   }
 }
 
+void assembly::pimpl::check_guarded() {
+  eu::eint::basis_type e_next = static_cast<eu::eint::basis_type>(m_clock.current()+1);
+  
+  for(eu::TokenSet::const_iterator i=m_guarded.begin(); m_guarded.end()!=i; ++i) {
+    eu::TokenId tok = *i;
+    
+    print_token(log()<<"checking ", *tok);
+    if( tok->start()->lastDomain().isMember(e_next) ) {
+      eu::TokenSet const &sl = tok->slaves();
+      eu::TokenSet effects;
+      bool guarded = false;
+      
+      for(eu::TokenSet::const_iterator s=sl.begin(); sl.end()!=s; ++s) {
+        if( is_condition(*s) ) {
+          if( !justified(*s) ) {
+            eu::TokenId guard = *s;
+            if( guard->isMerged() )
+              guard->getActiveToken();
+            
+            print_token(log()<<"   - guard: ", *guard);
+            guarded = true;
+            break;
+          }
+        } else if( is_effect(*s) )
+          effects.insert(*s);
+      }
+      if( !guarded ) {
+        log()<<"   * token is free to start ("<<effects.size()<<" effects)";
+        
+        
+      }
+        
+    } else
+      log()<<"   - cannot start at next tick";
+  }
+}
+
+
 void assembly::pimpl::init_plan_state() {
   eu::ObjectId obj = m_plan->getObject("europtus");
   if( obj.isNoId() )
@@ -804,6 +856,8 @@ void assembly::pimpl::update_state(clock::tick_type date) {
       }
       m_plan_tok->end()->restrictBaseDomain(future);
       m_cstr->propagate();
+      // TODO: need to revise this whole thing so it is managed by assmbly with proper priority
+      check_guarded();
     }
   }
 }

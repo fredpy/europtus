@@ -129,7 +129,11 @@ namespace europtus {
       
       typedef boost::bimaps::multiset_of<EUROPA::TokenId> um_set_of_tok;
       typedef boost::bimap<um_set_of_tok, um_set_of_tok> token_map;
-      token_map m_justified;
+      token_map        m_justified;
+      EUROPA::TokenSet m_guarded;
+    
+      void check_guarded();
+      
       
       bool justified(EUROPA::TokenId tok) const;
       void justify(EUROPA::TokenId tok, EUROPA::TokenId just);
