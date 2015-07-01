@@ -1,0 +1,185 @@
+#include "europtus.nddl"
+
+class WhalePos extends Timeline {
+    predicate Position {
+	float latitude, longitude;
+    }
+
+    WhalePos() {}
+}
+
+class WhaleSurvey extends Timeline {
+    predicate Inactive {}
+
+    predicate Active {}
+
+    WhaleSurvey() {}
+
+}
+
+// A battery as a timeline: it works well enough for my problem
+class Battery extends Timeline {
+  float max_level;
+
+  predicate consume {
+    float quantity;
+    float current_level;
+    float prev_level;
+    0 <= prev_level;
+    0 <= current_level;
+    current_level + quantity == prev_level;
+    start >= 0;
+  }
+
+
+  Battery(float _max) {
+    max_level = _max;
+  }
+}
+
+
+Battery::consume {
+  prev_level <= object.max_level;
+  current_level <= object.max_level;
+  
+  if( start==0 ) {
+    prev_level == object.max_level;
+  } else {
+    met_by(consume pred);
+    prev_level == pred.current_level;
+  }
+}
+
+class UAV extends Timeline {
+    Battery battery;
+    float fly_duration; // time to fly in seconds on full charge
+    float charge_duration; // time to recharge from 0 to full charge
+
+    predicate fly {
+	int dur;
+	float dur_f, dur_s;
+    }
+    predicate charge {
+	float end_level;
+    }
+
+    UAV(float fly, float charge) {
+	battery = new Battery(100.0);
+	fly_duration = fly;
+	charge_duration = charge;
+    }
+}
+
+UAV::fly {
+    float duration_f, duration_s;
+    Battery bat;
+    bat == object.battery;
+    dur == duration;
+    dur_f == duration_f;
+    dur_s == duration_s;
+
+    
+    temporalDistance(start, duration, end);
+    ceil(duration_f) == duration;
+    duration_f * TICK_DURATION == duration_s;
+
+    equals(bat.consume use);
+    use.quantity >= 0.0;
+    duration_s * bat.max_level == use.quantity * object.fly_duration;
+}
+
+
+UAV::charge {
+    float duration_f, duration_s;
+    Battery bat;
+    bat == object.battery;
+
+    temporalDistance(start, duration, end);
+    ceil(duration_f) == duration;
+    duration_f * TICK_DURATION == duration_s;
+
+    equals(bat.consume charge);
+    charge.quantity <= 0.0;
+    end_level <= charge.current_level;
+
+    float to_fill, charge_s;
+    charge.prev_level + to_fill == bat.max_level;
+    to_fill * object.charge_duration == bat.max_level * charge_s;
+    
+    float charging_time_s, pos_qty;
+    pos_qty + charge.quantity == 0.0;
+    0 <= charging_time_s;
+    charging_time_s <= duration_s;
+    charging_time_s <= charge_s;
+    pos_qty * object.charge_duration == bat.max_level * charging_time_s;
+}
+
+
+
+
+class Whale {
+    WhalePos estate;
+    WhaleSurvey survey;
+    UAV         uav;
+
+    action locate {
+	int   dur;
+	float dur_s;
+    }
+    
+    Whale(UAV plane) {
+	estate = new WhalePos();
+	survey = new WhaleSurvey();
+	uav = plane;
+    }
+}
+
+
+Whale::locate {
+    starts_during(europtus.execute);
+    
+    contains(effect WhalePos.Position spot);
+    spot.object == object.estate;
+
+    UAV me;
+    Battery bat;
+    
+    me == object.uav;
+    bat == me.battery;
+
+    met_by(condition UAV.charge prep);
+    prep.object == me;
+    prep.end_level == bat.max_level;
+
+    equals(UAV.fly operate);
+    operate.duration == duration; // seems like europa forget to do that on its own 
+    operate.object == me;
+
+    dur == duration;
+    
+    float duration_f, duration_s;
+    temporalDistance(start, duration, end);
+    ceil(duration_f) == duration;
+    duration_f * TICK_DURATION == duration_s;
+    // fly for at least half of fly time
+    2.0 * duration_s >= me.fly_duration;
+    // fly for at most 90% of fly time
+    duration_s <= 0.9 * me.fly_duration;
+
+    dur_s == duration_s;
+}
+
+
+UAV drone = new UAV(1800.0, 900.0);
+Whale whale = new Whale(drone);
+
+fact(Battery.consume init);
+init.object.specify(drone.battery);
+init.start.specify(0);
+init.current_level == 100.0;
+
+
+rejectable(WhalePos.Position spot);
+spot.start >= 0;
+spot.start <= FINAL_TICK;
+spot.object.specify(whale.estate);

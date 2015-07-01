@@ -59,14 +59,17 @@ ceil_constraint::~ceil_constraint() {}
 
 void ceil_constraint::handleExecute() {
   eu::edouble c_lb, c_ub, v_lb, v_ub;
-
-  // restrict m_ceail based on m_val
+  eu::edouble const almost_one = 1.0 - 1e-10;
+  
+  
+  // restrict m_ceil based on m_val
   m_val.getBounds(v_lb, v_ub);
   
   if( v_lb<=std::numeric_limits<eu::edouble>::minus_infinity() )
     c_lb = std::numeric_limits<eu::eint>::minus_infinity();
   else
     c_lb = std::ceil(v_lb);
+  
   if( v_ub>=std::numeric_limits<eu::edouble>::infinity() )
     c_ub = std::numeric_limits<eu::eint>::infinity();
   else
@@ -79,13 +82,16 @@ void ceil_constraint::handleExecute() {
   
   if( c_lb<=std::numeric_limits<eu::eint>::minus_infinity() )
     v_lb = std::numeric_limits<eu::edouble>::minus_infinity();
-  else if( (c_lb-1.0)<v_lb )
-    v_lb = c_lb-1.0;
+  else if( (c_lb-almost_one)>v_lb )
+    v_lb = c_lb-almost_one;
+  
+
+  
   if( c_ub>=std::numeric_limits<eu::eint>::infinity() )
     v_ub = std::numeric_limits<eu::edouble>::infinity();
   else if( v_ub>c_ub )
     v_ub = c_ub;
+
   m_val.intersect(v_lb, v_ub);
 
-  
 }
