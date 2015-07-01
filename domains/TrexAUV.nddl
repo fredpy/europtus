@@ -62,6 +62,8 @@ DrifterFollow::Survey {
     temporalDistance(start, duration, end);
     ceil(duration_f) == duration;
     duration_f * TICK_DURATION == 1.0;   
+
+    dispatchable(false, path, size, center_lat, center_lon);
 }
 
 

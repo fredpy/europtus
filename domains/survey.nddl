@@ -61,23 +61,25 @@ sp_2.speed.specify(1.25);
 
 // set the whale object with uav autonomy to 30mn
 
-Whale  whale = new Whale(30.0);
+UAV    lsts = new UAV(1800.0, 900.0);
+Whale  whale = new Whale();
 
 // strat as Inactive
 fact(whale.survey.Inactive idle);
 precedes(idle.start, 0);
 precedes(0, idle.end);
 
-// iinitialize my survey counter to 0
-fact(whale.counter.Holds init_c);
-init_c.start <= 0;
-init_c.end >= 0;
-init_c.number.specify(0);
+fact(Battery.consume init);
+init.object.specify(lsts.battery);
+init.start.specify(0);
+init.current_level == 100.0;
 
 // request to be active
 rejectable(WhaleFollow.Active follow);
 follow.surveys.specify(two_squares);
 follow.scale.specify(800.0);
+
+
 
 // rejectable(DrifterFollow.Survey survey);
 // precedes(0, survey.start);

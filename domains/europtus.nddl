@@ -25,3 +25,5 @@ plan_state::planning {
 }
 
 plan_state europtus = new plan_state();
+
+plan_state.close();

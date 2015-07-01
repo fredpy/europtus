@@ -1,0 +1,93 @@
+// A battery as a timeline: it works well enough for my problem
+class Battery extends Timeline {
+  float max_level;
+
+  predicate consume {
+    float quantity;
+    float current_level;
+    float prev_level;
+    0 <= prev_level;
+    0 <= current_level;
+    current_level + quantity == prev_level;
+    start >= 0;
+  }
+
+
+  Battery(float _max) {
+    max_level = _max;
+  }
+}
+
+
+Battery::consume {
+  prev_level <= object.max_level;
+  current_level <= object.max_level;
+  
+  if( start==0 ) {
+    prev_level == object.max_level;
+  } else {
+    met_by(consume pred);
+    prev_level == pred.current_level;
+  }
+}
+
+class UAV extends Timeline {
+    Battery battery;
+    float flight_time;
+    float charge_time;
+
+    predicate fly {}
+    predicate charge {
+	float end_level;
+    }
+
+    UAV(float flight, float charg) {
+	super();
+	battery = new Battery(100.0);
+	flight_time = flight;
+	charge_time = charg;
+    }
+}
+
+
+UAV::fly {
+    float duration_f, duration_s;
+    Battery bat;
+    bat == object.battery;
+
+    
+    temporalDistance(start, duration, end);
+    ceil(duration_f) == duration;
+    duration_f * TICK_DURATION == duration_s;
+
+    equals(bat.consume use);
+    use.quantity >= 0.0;
+    duration_s * bat.max_level == object.flight_time * use.quantity;
+}
+
+UAV::charge {
+    float duration_f, duration_s;
+    Battery bat;
+    bat == object.battery;
+
+    temporalDistance(start, duration, end);
+    ceil(duration_f) == duration;
+    duration_f * TICK_DURATION == duration_s;
+
+    equals(bat.consume charge);
+    charge.quantity <= 0.0;
+    end_level <= charge.current_level;
+
+    float to_fill, charge_s;
+    charge.prev_level + to_fill == bat.max_level;
+    to_fill * object.charge_time == bat.max_level * charge_s;
+    
+    float charging_time_s, pos_qty;
+    pos_qty + charge.quantity == 0.0;
+    0 <= charging_time_s;
+    charging_time_s <= duration_s;
+    charging_time_s <= charge_s;
+    pos_qty * object.charge_time == bat.max_level * charging_time_s;
+}
+
+

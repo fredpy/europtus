@@ -1,0 +1,21 @@
+#include "europtus.nddl"
+
+class Neptus extends Timeline {
+      predicate Message {
+	  string content;
+      }
+
+    Neptus() {
+	super();
+    }
+}
+
+Neptus::Message {
+    starts_during(europtus.execute);
+    // send only if content is a singleton
+    dispatchable(true, content);
+}
+
+Neptus neptus = new Neptus();
+
+Neptus.close();
