@@ -59,8 +59,7 @@ ceil_constraint::~ceil_constraint() {}
 
 void ceil_constraint::handleExecute() {
   eu::edouble c_lb, c_ub, v_lb, v_ub;
-  eu::edouble const almost_one = 1.0 - m_val.minDelta();
-  
+  eu::edouble const almost_one = 1.0;
   
   // restrict m_ceil based on m_val
   m_val.getBounds(v_lb, v_ub);
@@ -93,5 +92,4 @@ void ceil_constraint::handleExecute() {
     v_ub = c_ub;
 
   m_val.intersect(v_lb, v_ub);
-
 }

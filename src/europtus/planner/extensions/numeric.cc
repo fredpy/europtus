@@ -43,7 +43,6 @@ namespace eu=EUROPA;
  */
 
 eu::IntervalDomain const sqrt_cstr::s_pos(0.0, std::numeric_limits<eu::edouble>::infinity());
-eu::edouble const sqrt_cstr::s_epsilon(1e-4);
 
 
 sqrt_cstr::sqrt_cstr(eu::LabelStr const &name,
@@ -61,88 +60,82 @@ sqrt_cstr::~sqrt_cstr() {
 }
 
 void sqrt_cstr::handleExecute() {
-  if( m_square.isOpen() && m_root.isOpen() ) {
-    m_square.intersect(s_pos);
-    m_root.intersect(s_pos);
+  eu::edouble const root_ceil = std::sqrt(std::numeric_limits<eu::edouble>::max());
+  
+  
+  if( m_square.intersect(s_pos) && m_square.isEmpty() )
     return;
-  } else if( m_square.isSingleton() ) {
-    eu::edouble x2 = m_square.getSingletonValue(), x;
+  if( m_root.intersect(s_pos) && m_root.isEmpty() )
+    return;
+  
+  if( m_square.isSingleton() ) {
+    eu::edouble x2 = m_square.getSingletonValue(),x;
     
-    if( x2<0.0 ) {
-      m_square.intersect(s_pos);
-      return;
-    }
     x = std::sqrt(x2);
-    if( x2>=std::numeric_limits<eu::edouble>::infinity() )
-      m_root.intersect(x, std::numeric_limits<eu::edouble>::infinity());
-    else
-      m_root.intersect(x,x);
+    m_root.intersect(x,x);
     return;
   } else if( m_root.isSingleton() ) {
     eu::edouble x = m_root.getSingletonValue(), x2;
     
-    if( x<0.0 ) {
-      m_root.intersect(s_pos);
-      return;
+    if( x>root_ceil ) {
+      m_square.intersect(std::numeric_limits<eu::edouble>::max(),
+                         std::numeric_limits<eu::edouble>::infinity());
+    } else {
+      x2 = x*x;
+      m_square.intersect(x2, x2);
     }
-    x2 = x*x;
-    if( x2>=std::numeric_limits<eu::edouble>::infinity() )
-      m_square.intersect(x, std::numeric_limits<eu::edouble>::infinity());
-    else
-      m_square.intersect(x2,x2);
     return;
   }
   
+  // case where neither is a singleton
   eu::edouble x_min, x_max, x2_min, x2_max;
   
-  for (bool done=false; !done; ) {
+  for(bool done=false; !done; ) {
     done = true;
     
     m_square.getBounds(x2_min, x2_max);
     m_root.getBounds(x_min, x_max);
     
-    if( x_min<=0.0 )
-      x_min = 0.0;
-    if( x2_min<=0.0 )
-      x2_min = 0.0;
-    
     eu::edouble max_x, min_x;
-
-    // upper_bound for x
+    
+    // upper bound for x
     if( x2_max>=std::numeric_limits<eu::edouble>::infinity() )
-      max_x = x2_max;
+      max_x = std::numeric_limits<eu::edouble>::infinity();
     else
       max_x = std::sqrt(x2_max);
-    
-    if( x_max-s_epsilon > max_x )
+    if( x_max-m_root.minDelta() > max_x )
       x_max = max_x;
     
-    // lower_bound for x
+    // lower bound for x
     min_x = std::sqrt(x2_min);
-    if( x_min+s_epsilon < min_x )
+    if( x_min+m_root.minDelta() < min_x )
       x_min = min_x;
     
-    // apply new domain
     if( m_root.intersect(x_min, x_max) && m_root.isEmpty() )
-      return; // failed
+      return;
     
     eu::edouble max_x2, min_x2;
     
-    // upper_bound for x2
-    max_x2 = x_max*x_max;
-    if( x2_max-s_epsilon > max_x2 )
+    // Upper bound for x2
+    if( x_max>root_ceil )
+      max_x2 = std::numeric_limits<eu::edouble>::infinity();
+    else
+      max_x2 = x_max*x_max;
+    if( (x2_max-m_square.minDelta()) > max_x2 )
       x2_max = max_x2;
     
-    // lower_bound for x2
-    min_x2 = x_min*x_min;
-    if( x2_min+s_epsilon < min_x2 )
+    // lower bound for x2
+    if( x_min>=root_ceil )
+      min_x2 = std::numeric_limits<eu::edouble>::max();
+    else
+      min_x2 = x_min*x_min;
+    if( (x2_min+m_square.minDelta()) < min_x2 )
       x2_min = min_x2;
     
-    // apply new domain
     if( m_square.intersect(x2_min, x2_max) ) {
       if( m_square.isEmpty() )
-        return; // failure
-      done = false; // need to check if this update affects m_root
-    }
+        return;
+      done = false;
+    }    
   }
 }
