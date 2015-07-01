@@ -107,6 +107,7 @@ add_executable(europtus
   src/europtus/planner/europa_protect.cc
   src/europtus/planner/exception.cc
   src/europtus/planner/ModuleEuroptus.cc
+  src/europtus/planner/extensions/dispatchable.cc
   src/europtus/planner/extensions/earliest_first.cc
   src/europtus/planner/extensions/ceil_constraint.cc
   src/europtus/planner/extensions/deg_to_rad.cc
@@ -134,8 +135,10 @@ add_executable(europtus
   include/europtus/planner/assembly.hh
   include/europtus/planner/europa_protect.hh
   include/europtus/planner/exception.hh
+  include/europtus/planner/propagator.hh
   include/europtus/planner/ModuleEuroptus.hh
   ${CMAKE_BINARY_DIR}/include/europtus/planner/bits/europa_cfg.hh
+  include/europtus/planner/extensions/dispatchable.hh
   include/europtus/planner/extensions/earliest_first.hh
   include/europtus/planner/extensions/ceil_constraint.hh
   include/europtus/planner/extensions/decision_point.hh

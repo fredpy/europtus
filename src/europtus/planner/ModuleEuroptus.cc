@@ -36,6 +36,7 @@
 #include "private/assembly_impl.hh"
 #include <europtus/planner/extensions/ceil_constraint.hh>
 #include <europtus/planner/extensions/deg_to_rad.hh>
+#include <europtus/planner/extensions/dispatchable.hh>
 #include <europtus/planner/extensions/decision_point.hh>
 #include <europtus/planner/extensions/earliest_first.hh>
 #include <europtus/planner/extensions/do_not_match.hh>
@@ -166,7 +167,11 @@ void ModuleEuroptus::initialize(EngineId engine) {
 
   REGISTER_CONSTRAINT(ceSchema, lsts::LatLonDisplace,
                       "ll_displace", "Default");
+  
+  REGISTER_CONSTRAINT(ceSchema, dispatchable,
+                      "dispatchable", "europtus");
 
+  
   REGISTER_CONSTRAINT(ceSchema,
                       ceil_constraint,
                       "ceilf", "Default");

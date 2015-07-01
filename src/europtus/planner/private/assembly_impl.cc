@@ -33,6 +33,7 @@
  */
 #include "assembly_impl.hh"
 #include "europtus/planner/ModuleEuroptus.hh"
+#include "europtus/planner/propagator.hh"
 
 #include <PLASMA/ModuleConstraintEngine.hh>
 #include <PLASMA/ModulePlanDatabase.hh>
@@ -182,6 +183,15 @@ void assembly::pimpl::token_proxy::notifyTerminated(const eu::TokenId& token) {
 }
 
 
+/*
+ * class europtus::planner::assembly::pimpl::propagator
+ */
+
+propagator::propagator(assembly::pimpl &me,
+                       eu::LabelStr const &name,
+                       eu::ConstraintEngineId const &cstr)
+:eu::DefaultPropagator(name, cstr), m_self(me) {}
+
 
 namespace ch=boost::chrono;
 using europtus::clock;
@@ -222,6 +232,8 @@ assembly::pimpl::pimpl(clock &c, tlog::text_log &log)
   m_cstr   = ((eu::ConstraintEngine *)getComponent("ConstraintEngine"))->getId();
   m_plan   = ((eu::PlanDatabase *)getComponent("PlanDatabase"))->getId();
   
+  m_propagator = (new propagator(*this, eu::LabelStr("europtus"), m_cstr))->getId();
+    
   m_cstr->setAutoPropagation(false);
   eu::DomainComparator::setComparator((eu::Schema *)m_schema);
   
@@ -417,14 +429,14 @@ void assembly::pimpl::check_planning() {
     if( m_cstr->provenInconsistent() || m_cstr->pending() ||
        !( m_solver->noMoreFlaws() && m_solver->getOpenDecisions().empty() ) ) {
       if( !m_planning ) {
-        log()<<"Resuming planning.";
+        // log()<<"Resuming planning.";
         m_planning = true;
         m_confirmed = false;
         m_steps = m_solver->getStepCount()+m_lost;
         if( m_clock.started() )
           m_plan_since = m_clock.current();
       } else {
-        log()<<"New plan step.";
+        // log()<<"New plan step.";
         m_confirmed = true;
         if( m_max_delay && m_clock.started() ) {
           clock::tick_type delay = m_clock.current()-m_plan_since;
@@ -458,7 +470,7 @@ void assembly::pimpl::check_planning() {
 }
 
 void assembly::pimpl::do_step() {
-  log()<<"Executing step";
+  // log()<<"Executing step";
   try {
     m_pending = false;
     if( m_planning ) {
@@ -750,15 +762,15 @@ void assembly::pimpl::check_guarded() {
             
             print_token(log()<<"   - guard: ", *guard);
             guarded = true;
-            break;
+            // break;
           }
         } else if( is_effect(*s) )
           effects.insert(*s);
       }
       if( !guarded ) {
         log()<<"   * token is free to start ("<<effects.size()<<" effects)";
-        
-        
+        for(eu::TokenSet::const_iterator e=effects.begin(); effects.end()!=e; ++e)
+          print_token(log()<<" - ", **e);
       }
         
     } else

@@ -34,8 +34,8 @@
 #ifndef H_europtus_planner_private_assembly_impl
 # define H_europtus_planner_private_assembly_impl
 
-# include "europtus/planner/assembly.hh"
 # include "europtus/planner/exception.hh"
+# include "europtus/planner/propagator.hh"
 
 # include "europtus/planner/bits/europa_cfg.hh"
 
@@ -112,6 +112,7 @@ namespace europtus {
       void reset_plan_time_out();
       void set_plan_time_out(clock::tick_type value);
       
+   
     private:
       typedef std::multimap<size_t, EUROPA::TokenId> token_almanach;
       token_almanach m_forcefully_injected;
@@ -221,6 +222,8 @@ namespace europtus {
         pimpl &m_self;
       };
       
+
+      propagator::id                 m_propagator;
       boost::scoped_ptr<token_proxy> m_proxy;
       friend class token_proxy;
     }; // europtus::planner::assmebly::pimpl

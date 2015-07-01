@@ -449,25 +449,32 @@ int main(int argc, char *argv[]) {
       
       if( opt_val.count("test") ) {
         tr::goal_id g;
-        
-        if( cur==1 ) {
-          g = MAKE_SHARED<tr::Goal>("auv1.drifter", "Inactive");
-          g->restrictStart(tr::IntegerDomain(-20));
+//        
+//        if( cur==1 ) {
+//          g = MAKE_SHARED<tr::Goal>("auv1.drifter", "Inactive");
+//          g->restrictStart(tr::IntegerDomain(-20));
+//        }
+//      
+//        if( cur==2 ) {
+//          g = MAKE_SHARED<tr::Goal>("auv2.drifter", "Inactive");
+//          g->restrictStart(tr::IntegerDomain(-18));
+//        }
+//      
+//        if( cur==12 ) {
+//          g = MAKE_SHARED<tr::Goal>("whale.estate", "Position");
+//          g->restrictStart(tr::IntegerDomain(3));
+//          g->restrictAttribute(tr::Variable("latitude",
+//                                          tr::FloatDomain(0.6658485111)));
+//          g->restrictAttribute(tr::Variable("longitude",
+//                                            tr::FloatDomain(-0.4966177319)));
+//        }
+        if( cur==10 ) {
+          g = MAKE_SHARED<tr::Goal>("drone", "charge");
+          g->restrictStart(tr::IntegerDomain(2));
+          g->restrictAttribute(tr::Variable("end_level",
+                                            tr::FloatDomain(100.0)));
         }
-      
-        if( cur==2 ) {
-          g = MAKE_SHARED<tr::Goal>("auv2.drifter", "Inactive");
-          g->restrictStart(tr::IntegerDomain(-18));
-        }
-      
-        if( cur==12 ) {
-          g = MAKE_SHARED<tr::Goal>("whale.estate", "Position");
-          g->restrictStart(tr::IntegerDomain(3));
-          g->restrictAttribute(tr::Variable("latitude",
-                                          tr::FloatDomain(0.6658485111)));
-          g->restrictAttribute(tr::Variable("longitude",
-                                            tr::FloatDomain(-0.4966177319)));
-        }
+          
         if( g )
           europa.observation(g);
       }
