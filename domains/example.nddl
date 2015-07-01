@@ -1,0 +1,88 @@
+#include "neptus.nddl"
+#include "uav.nddl"
+
+class WhalePos extends Timeline {
+    predicate Position {
+	float latitude, longitude;
+    }
+
+    WhalePos() {}
+}
+
+class WhaleSurvey extends Timeline {
+    predicate Inactive {}
+
+    predicate Active {}
+
+    WhaleSurvey() {}
+
+}
+
+class Whale {
+    string request_uav;
+    
+    WhalePos estate;
+    WhaleSurvey survey;
+    UAV         uav;
+
+    action locate {}
+    
+    Whale(UAV plane) {
+	request_uav = "UAV Operation requested";
+	estate = new WhalePos();
+	survey = new WhaleSurvey();
+	uav = plane;
+    }
+}
+
+Whale::locate {
+    // conditions:
+    starts_during(condition europtus.execute);
+    ends(condition UAV.charge prep);
+    // effects:
+    starts(effect Neptus.Message msg);
+    before(effect WhalePos.Position spot);
+
+    UAV me;
+    Battery bat;
+
+    me == object.uav;
+    bat == me.battery;
+
+    // constraints on objects
+    spot.object == object.estate;
+    prep.object == me;
+
+    // constraints on condition
+    prep.end_level == bat.max_level;
+
+    // constraints on effects
+    msg.content == object.request_uav;
+
+    meets(UAV.fly operate);
+    operate.object == me;
+    operate contains_start spot;
+
+    float duration_f, duration_s;
+    temporalDistance(operate.start, operate.duration, operate.end);
+    ceil(duration_f) == operate.duration;
+    duration_f * TICK_DURATION == duration_s;
+    2.0 * duration_s >= me.flight_time;
+    duration_s <= 0.9 * me.flight_time;
+}
+
+
+// create a UAV that can fly up to 30mn and fully recharge in 15mn
+UAV drone = new UAV(1800.0, 900.0);
+Whale whale = new Whale(drone);
+
+fact(Battery.consume init);
+init.object.specify(drone.battery);
+init.start.specify(0);
+init.current_level == 100.0;
+
+
+rejectable(WhalePos.Position spot);
+spot.start >= 0;
+spot.start <= FINAL_TICK;
+spot.object.specify(whale.estate);
