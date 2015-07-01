@@ -56,8 +56,6 @@ class UAV extends Timeline {
     float charge_duration; // time to recharge from 0 to full charge
 
     predicate fly {
-	int dur;
-	float dur_f, dur_s;
     }
     predicate charge {
 	float end_level;
@@ -74,9 +72,6 @@ UAV::fly {
     float duration_f, duration_s;
     Battery bat;
     bat == object.battery;
-    dur == duration;
-    dur_f == duration_f;
-    dur_s == duration_s;
 
     
     temporalDistance(start, duration, end);
@@ -123,8 +118,6 @@ class Whale {
     UAV         uav;
 
     action locate {
-	int   dur;
-	float dur_s;
     }
     
     Whale(UAV plane) {
@@ -154,8 +147,6 @@ Whale::locate {
     equals(UAV.fly operate);
     operate.duration == duration; // seems like europa forget to do that on its own 
     operate.object == me;
-
-    dur == duration;
     
     float duration_f, duration_s;
     temporalDistance(start, duration, end);
@@ -165,8 +156,6 @@ Whale::locate {
     2.0 * duration_s >= me.fly_duration;
     // fly for at most 90% of fly time
     duration_s <= 0.9 * me.fly_duration;
-
-    dur_s == duration_s;
 }
 
 
