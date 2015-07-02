@@ -13,25 +13,28 @@ class AUVPos extends Timeline {
 }
 
 class TrexPath {
+  int   waypoints;
   float distance;
   float entry_dx, entry_dy;
   float exit_dx, exit_dy;
 
-  TrexPath(float dist, float ax, float ay, float zx, float zy) {
+    TrexPath(float dist, float ax, float ay, float zx, float zy, int wp) {
     distance = dist;
     entry_dx = ax;
     entry_dy = ay;
     exit_dx = zx;
     exit_dy = zy;
+    waypoints = wp;
   }
 
 
-  TrexPath(float dist, float x, float y) {
+    TrexPath(float dist, float x, float y, int wp) {
     distance = dist;
     entry_dx = x;
     entry_dy = y;
     exit_dx = x;
     exit_dy = y;
+    waypoints  = wp;
   }
 }
 
@@ -90,6 +93,8 @@ SpeedControl::Holds {
 }
 
 class AUV {
+    float waypoint_idle;
+    
     action exec_survey {
 	float distance_from_start, distance;
 	float entry_lat, entry_lon;
@@ -103,10 +108,11 @@ class AUV {
     SpeedControl  speed;
     AUVPos        estate;
 
-    AUV(float mi, float ma) {
+    AUV(float mi, float ma, float idle) {
 	drifter = new DrifterFollow();
 	speed = new SpeedControl(mi, ma);
 	estate = new AUVPos();
+	waypoint_idle = idle;
     }
 }
 
@@ -146,9 +152,16 @@ AUV::exec_survey {
 
     // duration of the survey itself
     int to_final;
+    float travel_s, idle_s, wp_f;
     float duration_f, duration_sec, to_fin_f, to_fin_s, half_speed;
 
     half_speed * 2.0 == sp.speed;
+
+    distance <= travel_s * sp.speed;
+    travel_s * half_speed <= distance;
+    ceil(wp_f) == p.waypoints;
+    wp_f * object.waypoint_idle == idle_s;
+    
  
     temporalDistance(start, duration, end);
     temporalDistance(start, to_final, FINAL_TICK);
@@ -158,9 +171,8 @@ AUV::exec_survey {
     
     duration_f * TICK_DURATION == duration_sec;
     to_fin_f * TICK_DURATION == to_fin_s;
-    
-    distance <= duration_sec * sp.speed;
-    duration_sec * half_speed <= distance;
+
+    duration_sec == travel_s+idle_s;
     distance <= to_fin_s * sp.speed;
     
     // identify my drift speed

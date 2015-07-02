@@ -112,10 +112,10 @@ Whale::locate {
 Whale::track {
     starts_during(condition europtus.execute);
     met_by(condition WhalePos.Position last_pos);
+    contains(condition DrifterFollow.Survey  survey_a);
+    contains(condition DrifterFollow.Survey survey_b);
     
     contained_by(effect WhaleFollow.Active active);
-    contains(effect DrifterFollow.Survey  survey_a);
-    contains(effect DrifterFollow.Survey survey_b);
 
     DrifterFollow a, b;
     

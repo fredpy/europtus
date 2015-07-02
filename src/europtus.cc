@@ -469,7 +469,7 @@ int main(int argc, char *argv[]) {
 //                                            tr::FloatDomain(-0.4966177319)));
 //        }
         if( cur==10 ) {
-          g = MAKE_SHARED<tr::Goal>("drone", "charge");
+          g = MAKE_SHARED<tr::Goal>("lsts", "charge");
           g->restrictStart(tr::IntegerDomain(2));
           g->restrictAttribute(tr::Variable("end_level",
                                             tr::FloatDomain(100.0)));
