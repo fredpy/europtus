@@ -52,6 +52,7 @@ namespace europtus {
       ~dispatchable();
       
     private:
+      void handleActivate();
       void handleExecute();
       void handleDiscard();
       

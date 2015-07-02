@@ -65,6 +65,7 @@ dispatchable::dispatchable(eu::LabelStr const &name,
 m_token(getParentToken(vars[0])),
 m_var(getCurrentDomain(vars[0])),
 m_pending(true) {
+  handleActivate();
 }
 
 bool dispatchable::connected() const {
@@ -100,6 +101,12 @@ void dispatchable::dispatch(bool direct) {
     debugMsg("europtus", "dispatchable() is not connected to europtus")
 }
 
+void dispatchable::handleActivate() {
+  if( connected() && m_token.isId() )
+    self().schedulled(m_token);
+}
+
+
 void dispatchable::handleExecute() {
   if( m_token.isId() && m_token->isActive() && m_pending ) {
     eu::BoolDomain true_dom(true);
@@ -129,7 +136,7 @@ void dispatchable::cleanup() {
   // TODO: do somethign to clean assembly
   if( !m_pending && connected() ) {
     self().log(getName().c_str())<<"undispatch("<<m_token->getPredicateName().toString()<<")";
-    self().remove_dispatchable(m_token);
+    self().unschedulled(m_token);
     m_pending = true;
   }
 }

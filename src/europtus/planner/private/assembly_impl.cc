@@ -149,7 +149,7 @@ void assembly::pimpl::token_proxy::notifyDeactivated(const eu::TokenId& token) {
   m_self.unjustify(token);
   if( m_self.is_action(token) )
     m_self.m_guarded.erase(token);
-  m_self.remove_dispatchable(token);
+  m_self.unschedulled(token);
 }
 
 void assembly::pimpl::token_proxy::notifyMerged(const eu::TokenId& token) {
@@ -335,6 +335,35 @@ void assembly::pimpl::effect_for(eu::TokenId const &tok,
 
 // manipulators
 
+bool assembly::pimpl::schedulled(EUROPA::TokenId tok) {
+  if( tok.isId() ) {
+    eu::TokenSet::iterator pos;
+    bool inserted;
+    
+    boost::tie(pos, inserted) = m_schedulled.insert(tok);
+    if( inserted )
+      print_token(log("dispatch")<<"schedulled ", *tok);
+    return inserted;
+  }
+  return false;
+}
+
+bool assembly::pimpl::unschedulled(EUROPA::TokenId tok) {
+  if( tok.isId() ) {
+    if( !m_schedulled.erase(tok) ) {
+      bool ret = m_dispatch.erase(tok);
+      if( ret )
+        log("dispatch")<<m_dispatch.size()<<" dispatches";
+      else
+        return false;
+    }
+    print_token(log("dispatch")<<"unschedulled ", *tok);
+    return true;
+  }
+  return false;
+}
+
+
 
 bool assembly::pimpl::add_dispatchable(EUROPA::TokenId tok, bool direct) {
   if( tok.isId() ) {
@@ -344,17 +373,10 @@ bool assembly::pimpl::add_dispatchable(EUROPA::TokenId tok, bool direct) {
     boost::tie(pos, inserted) = m_dispatch.insert(std::make_pair(tok, direct));
     if( !inserted )
       pos->second = direct;
+    else
+      m_schedulled.erase(tok);
     log("dispatch")<<m_dispatch.size()<<" dispatches";
     return inserted;
-  }
-  return false;
-}
-
-bool assembly::pimpl::remove_dispatchable(EUROPA::TokenId tok) {
-  if( tok.isId() ) {
-    bool ret = m_dispatch.erase(tok);
-    log("dispatch")<<m_dispatch.size()<<" dispatches";
-    return ret;
   }
   return false;
 }
@@ -781,38 +803,99 @@ void assembly::pimpl::send_exec() {
 
 void assembly::pimpl::check_guarded() {
   eu::eint::basis_type e_next = static_cast<eu::eint::basis_type>(m_clock.current()+1);
-  
-  for(eu::TokenSet::const_iterator i=m_guarded.begin(); m_guarded.end()!=i; ++i) {
-    eu::TokenId tok = *i;
-    
-    print_token(log()<<"checking ", *tok);
-    if( tok->start()->lastDomain().isMember(e_next) ) {
-      eu::TokenSet const &sl = tok->slaves();
-      eu::TokenSet effects;
-      bool guarded = false;
+  eu::TokenSet postponed;
+  eu::IntervalIntDomain future(e_next, std::numeric_limits<eu::eint>::infinity());
+
+  // traverse schedulled tokens that are still blocked
+  for(eu::TokenSet::const_iterator s=m_schedulled.begin(); m_schedulled.end()!=s; ++s) {
+    if( is_fact(*s) )
+      print_token(log("dispatch")<<"schedulled.is_fact(", **s)<<")";
+    else if( !(*s)->isInactive() ) {
+      eu::TokenSet actions;
+      effect_for(*s, actions);
       
-      for(eu::TokenSet::const_iterator s=sl.begin(); sl.end()!=s; ++s) {
-        if( is_condition(*s) ) {
-          if( !justified(*s) ) {
-            eu::TokenId guard = *s;
-            if( guard->isMerged() )
-              guard->getActiveToken();
-            
-            print_token(log()<<"   - guard: ", *guard);
-            guarded = true;
-            // break;
-          }
-        } else if( is_effect(*s) )
-          effects.insert(*s);
+      print_token(log("dispatch")<<"sched.effect(", **s)<<") = "<<actions.size();
+      // TODO: add the actions to postponed. It should be the case (!!?)
+      postponed.insert(*s);
+      
+    }
+  }
+  // pospone the tokens that are still guarded:
+  for(eu::TokenSet::const_iterator p=postponed.begin(); postponed.end()!=p; ++p) {
+    if( (*p)->start()->lastDomain().getUpperBound()>=e_next ) {
+      (*p)->start()->restrictBaseDomain(future);
+      if( (*p)->start()->lastDomain().getLowerBound()<e_next ) {
+        (*p)->start()->restrictBaseDomain(future);
+        if( !m_cstr->propagate() ) {
+          send_step();
+          return;
+        }
       }
-      if( !guarded ) {
-        log()<<"   * token is free to start ("<<effects.size()<<" effects)";
-        for(eu::TokenSet::const_iterator e=effects.begin(); effects.end()!=e; ++e)
-          print_token(log()<<" - ", **e);
-      }
-        
     } else
-      log()<<"   - cannot start at next tick";
+      print_token(log(tlog::warn)<<"sched.past(", **p)<<")";
+  }
+  
+  // Now check the candidates
+  for(dispatch_table::const_iterator i=m_dispatch.begin(); m_dispatch.end()!=i; ++i) {
+    if( is_fact(i->first) ) {
+      print_token(log("dispatch")<<"dispatch.is_fact(", *(i->first))<<")";
+    } else {
+      eu::TokenSet actions;
+      effect_for(i->first, actions);
+      
+      // TODO: check if actions are guarded (?)
+      print_token(log("dispatch")<<"dispatch.effect(", *(i->first))<<") = "<<actions.size();
+      
+      bool to_send = false;
+      
+      if( actions.empty() )
+        to_send = true;
+      else {
+        for(eu::TokenSet::const_iterator a=actions.begin(); actions.end()!=a; ++a) {
+          bool guarded = false;
+          
+          if( !justified(*a) ) {
+            eu::TokenSet const &slaves = (*a)->slaves();
+            guarded = false;
+            
+            for(eu::TokenSet::const_iterator s=slaves.begin(); slaves.end()!=s; ++s) {
+              if( is_condition(*s) && !justified(*s) ) {
+                guarded = true;
+                break;
+              }
+            }
+          }
+          if( !guarded ) {
+            // this action is ready to fire
+            // TODO: check action start time
+            log("dispatch")<<(*a)->getPredicateName().toString()
+            <<": "<<(*a)->start()->toString()
+            <<" -> "<<i->first->getPredicateName().toString()
+            <<" : "<<i->first->start()->toString();
+            
+            // TODO: replace this fake by the real thing
+            if( i->second ) {
+              eu::ObjectDomain const &dom = i->first->getObject()->lastDomain();
+              eu::ObjectId obj = dom.makeObjectList().front();
+
+              eu::TokenId f = new_token(obj, i->first->getPredicateName().c_str(), true);
+              f->start()->restrictBaseDomain(i->first->start()->lastDomain());
+              std::vector<eu::ConstrainedVariableId> const &attrs = i->first->parameters();
+              for(std::vector<eu::ConstrainedVariableId>::const_iterator v=attrs.begin();
+                  attrs.end()!=v; ++v) {
+                f->getVariable((*v)->getName())->restrictBaseDomain((*v)->lastDomain());
+                if( (*v)->lastDomain().isSingleton() )
+                  f->getVariable((*v)->getName())->specify((*v)->lastDomain().getSingletonValue());
+              }
+              eu::DbClientId cli = m_plan->getClient();
+              cli->merge(f, i->first);
+              m_forcefully_injected.insert(std::make_pair(m_solver->getDepth(), f));
+              log("dispatch")<<m_plan->toString();
+            }
+          }
+        }
+      }
+    }
   }
 }
 

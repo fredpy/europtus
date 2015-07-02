@@ -112,8 +112,9 @@ namespace europtus {
       void reset_plan_time_out();
       void set_plan_time_out(clock::tick_type value);
       
+      bool schedulled(EUROPA::TokenId tok);
+      bool unschedulled(EUROPA::TokenId tok);
       bool add_dispatchable(EUROPA::TokenId tok, bool direct);
-      bool remove_dispatchable(EUROPA::TokenId tok);
       
    
     private:
@@ -121,7 +122,8 @@ namespace europtus {
       token_almanach m_forcefully_injected;
       typedef std::map<EUROPA::TokenId, bool> dispatch_table;
       
-      dispatch_table m_dispatch;
+      EUROPA::TokenSet m_schedulled;
+      dispatch_table   m_dispatch;
       
       
       bool is_action(EUROPA::TokenId const &tok) const;
