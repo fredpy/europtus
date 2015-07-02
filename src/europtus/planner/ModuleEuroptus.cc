@@ -63,6 +63,7 @@ namespace TREX {
 }
 
 using namespace europtus::planner;
+namespace eu=EUROPA;
 
 namespace {
   DECLARE_FUNCTION_TYPE(ceil_constraint, ceil, "ceilf",
@@ -77,6 +78,8 @@ namespace {
                         EUROPA::FloatDT, 1);
   
   
+  
+  
   class TowardZero: public eu_s::UnboundVariableDecisionPoint {
   public:
     TowardZero(EUROPA::DbClientId const &client,
@@ -87,49 +90,53 @@ namespace {
     m_choiceIndex(0) {}
     
     bool hasNext() const {
-      return m_choiceIndex < m_choices->getCount();
+      return m_choiceIndex<m_my_choices.size();
     }
     EUROPA::edouble getNext() {
-      EUROPA::edouble ret = choice(m_choiceIndex++);
+      eu::edouble ret = m_my_choices[m_choiceIndex++];
       debugMsg("trex:to_zero", "next choice: "<<m_flawedVariable->toString()
-               <<" <- "<<ret<<" ("<<m_choiceIndex<<")");
+               <<" <- "<<ret<<" ("<<m_choiceIndex<<" of "<<m_my_choices.size()<<")");
       return ret;
     }
     
   private:
-    EUROPA::edouble choice(unsigned int idx) {
-      EUROPA::Domain const &dom = m_flawedVariable->lastDomain();
-      EUROPA::edouble zero(0.0);
+    std::vector<eu::edouble> m_my_choices;
+    
+    void handleInitialize() {
+      eu::edouble zero(0.0);
+      eu::Domain const &dom = m_flawedVariable->lastDomain();
+
+      if( dom.isMember(zero) )
+        m_my_choices.push_back(zero);
+      eu::edouble lo, hi;
+      dom.getBounds(lo, hi);
       
-      if( dom.isInterval() ) {
-        EUROPA::edouble lo = dom.getLowerBound(),
-        hi = dom.getUpperBound(),
-        steps = dom.minDelta();
-        if( lo<=zero ) {
-          if( hi<=zero )
-            idx = m_choices->getCount() - (idx+1);
-          else {
-            EUROPA::Domain::size_type
-            lo_cut = EUROPA::cast_int((zero-lo)/steps),
-            hi_cut = EUROPA::cast_int(hi/steps),
-            half_idx = (idx+1)/2;
-            if( half_idx>lo_cut ) {
-              // exhausted all the choices below zero
-              idx -= lo_cut;
-              return steps*idx;
-            } else if( half_idx>hi_cut ) {
-              // exhausted all the choices above zero
-              idx -= hi_cut;
-              return zero-(steps*idx);
-            } else if( idx&1 )
-              return steps*half_idx;
-            else
-              return zero-(steps*half_idx);
+      if( dom.isSingleton() ) {
+        m_my_choices.push_back(lo);
+      } if( dom.areBoundsFinite() ) {
+        if( lo>zero ) {
+          m_my_choices.push_back(lo);
+          m_my_choices.push_back(hi);
+        } else if( hi<zero ) {
+          m_my_choices.push_back(hi);
+          m_my_choices.push_back(lo);
+        } else {
+          eu::edouble nlo = -lo;
+          
+          if( nlo<hi ) {
+            if( lo!=zero )
+              m_my_choices.push_back(lo);
+            m_my_choices.push_back(hi);
+          } else {
+            if( hi!=zero )
+              m_my_choices.push_back(hi);
+            m_my_choices.push_back(lo);
           }
         }
-      }
-      
-      return m_choices->getValue(idx);
+      } else if( lo > std::numeric_limits<eu::edouble>::minus_infinity() )
+        m_my_choices.push_back(lo);
+      else if( hi < std::numeric_limits<eu::edouble>::infinity() )
+        m_my_choices.push_back(hi);
     }
     unsigned int m_choiceIndex;
   };

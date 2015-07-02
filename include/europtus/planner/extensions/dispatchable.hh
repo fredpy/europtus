@@ -60,6 +60,8 @@ namespace europtus {
       bool connected() const;
       assembly::pimpl &self() const;
       
+      void cleanup();
+      
       mutable propagator::id   m_prop;
       EUROPA::TokenId m_token;
       EUROPA::Domain &m_var;

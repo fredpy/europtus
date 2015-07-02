@@ -87,7 +87,7 @@ assembly::pimpl &dispatchable::self() const {
 
 
 dispatchable::~dispatchable() {
-  handleDiscard();
+  cleanup();
 }
 
 void dispatchable::dispatch(bool direct) {
@@ -125,11 +125,17 @@ void dispatchable::handleExecute() {
 }
 
 
-void dispatchable::handleDiscard() {
+void dispatchable::cleanup() {
   // TODO: do somethign to clean assembly
   if( !m_pending && connected() ) {
     self().log(getName().c_str())<<"undispatch("<<m_token->getPredicateName().toString()<<")";
     self().remove_dispatchable(m_token);
     m_pending = true;
   }
+}
+
+
+void dispatchable::handleDiscard() {
+  cleanup();
+  eu::Constraint::handleDiscard();
 }
