@@ -71,7 +71,9 @@ namespace europtus {
       
       // NOTE: start_imc is not thread safe. I.e multiple
       // concurrent calls to it may result on undefined behavior
-      void start_imc(int id, int port, clock &clk);
+      void start_imc(int id, int port,
+                     std::string const &neptus_ip,
+                     int neptus_port, clock &clk);
       void stop_imc();
       
       TREX::utils::log::stream log(TREX::utils::log::id_type const &what) const;
@@ -83,6 +85,8 @@ namespace europtus {
         return m_tok_sig;
       }
       
+      void request(TREX::transaction::goal_id g);
+      
     private:
       goal_id get_token(DUNE::IMC::TrexToken *g, bool is_goal);
       
@@ -90,17 +94,21 @@ namespace europtus {
       
       void on_tick(conn const &c,
                    clock &clk, clock::tick_type tick);
-      void async_poll();
+      void async_poll(clock::tick_type date);
+      void async_request(TREX::transaction::goal_id g);
       
       
       boost::asio::strand         m_strand;
       bool                        m_polling;
       
+      std::string                 m_neptus_ip;
+      int                         m_neptus_port;
       conn                        m_conn;
       TREX::LSTS::ImcAdapter      m_adapter;
       TREX::utils::log::text_log &m_log;
       
       token_event                 m_tok_sig;
+      clock::tick_type            m_date;
     }; // class europtus::dune::imc_client
     
   } // europtus::dune

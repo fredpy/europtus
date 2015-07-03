@@ -88,6 +88,11 @@ UAV::charge {
     charging_time_s <= duration_s;
     charging_time_s <= charge_s;
     pos_qty * object.charge_time == bat.max_level * charging_time_s;
+
+    bool test;
+    test == true;
+    
+    justify(test);
 }
 
 

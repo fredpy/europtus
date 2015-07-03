@@ -36,6 +36,7 @@
 
 # include "europtus/planner/exception.hh"
 # include "europtus/planner/propagator.hh"
+# include "europtus/planner/dispatch_manager.hh"
 
 # include "europtus/planner/bits/europa_cfg.hh"
 
@@ -70,11 +71,17 @@ namespace europtus {
       
       static boost::shared_ptr<pimpl> create(clock &c,
                                              TREX::utils::log::text_log &l) {
-        return boost::make_shared<pimpl>(boost::ref(c), boost::ref(l));
+        boost::shared_ptr<pimpl> ret = boost::make_shared<pimpl>(boost::ref(c), boost::ref(l));
+        ret->initialize();
+        return ret;
       }
+      
+      static std::ostream &print_token(std::ostream &out, EUROPA::Token const &tok);
+
       
       explicit pimpl(clock &c, TREX::utils::log::text_log &l);
       ~pimpl();
+      
       
       static void async_exec(boost::weak_ptr<pimpl> who,
                              boost::function<void (pimpl *)> fn) {
@@ -112,19 +119,24 @@ namespace europtus {
       void reset_plan_time_out();
       void set_plan_time_out(clock::tick_type value);
       
-      bool schedulled(EUROPA::TokenId tok);
-      bool unschedulled(EUROPA::TokenId tok);
-      bool add_dispatchable(EUROPA::TokenId tok, bool direct);
+      void schedulled(EUROPA::TokenId tok);
+      void unschedulled(EUROPA::TokenId tok);
+      void add_dispatchable(EUROPA::TokenId tok, bool direct);
       
+      bool justified(EUROPA::TokenId const &tok) const;
+      void justify(EUROPA::TokenId const &tok);
+      void unjustify(EUROPA::TokenId const &tok);
+      
+      void dispatch(EUROPA::TokenId const &tok, bool direct);
    
+      request_sig &on_dispatch();
+      
     private:
       typedef std::multimap<size_t, EUROPA::TokenId> token_almanach;
       token_almanach m_forcefully_injected;
-      typedef std::map<EUROPA::TokenId, bool> dispatch_table;
+      assembly::request_sig  m_request;
       
-      EUROPA::TokenSet m_schedulled;
-      dispatch_table   m_dispatch;
-      
+      void initialize();
       
       bool is_action(EUROPA::TokenId const &tok) const;
       bool is_predicate(EUROPA::TokenId const &tok) const;
@@ -133,22 +145,11 @@ namespace europtus {
       bool is_condition(EUROPA::TokenId  const &tok) const;
       bool is_effect(EUROPA::TokenId const &tok) const;
       
-      void effect_for(EUROPA::TokenId const &tok, EUROPA::TokenSet &actions,
-                      bool recurse = true) const;
-      
-      
-      typedef boost::bimaps::multiset_of<EUROPA::TokenId> um_set_of_tok;
-      typedef boost::bimap<um_set_of_tok, um_set_of_tok> token_map;
-      token_map        m_justified;
-      EUROPA::TokenSet m_guarded;
-    
+      void effect_for(EUROPA::TokenId const &tok, EUROPA::TokenSet &actions) const;
+          
       void send_exec();
       void check_guarded();
       
-      
-      bool justified(EUROPA::TokenId tok) const;
-      void justify(EUROPA::TokenId tok, EUROPA::TokenId just);
-      void unjustify(EUROPA::TokenId tok);
       
       EUROPA::ConstrainedVariableId restrict_global(char const *name,
                                                     char const *type,
@@ -212,30 +213,8 @@ namespace europtus {
       
       pimpl();
       
-      class token_proxy :public EUROPA::PlanDatabaseListener {
-      public:
-        token_proxy(pimpl &me);
-        ~token_proxy();
-        
-      private:
-        void notifyAdded(const EUROPA::TokenId& token);
-        void notifyRemoved(const EUROPA::TokenId& token);
-        void notifyActivated(const EUROPA::TokenId& token);
-        void notifyDeactivated(const EUROPA::TokenId& token);
-        void notifyMerged(const EUROPA::TokenId& token);
-        void notifySplit(const EUROPA::TokenId& token);
-        void notifyRejected(const EUROPA::TokenId& token);
-        void notifyReinstated(const EUROPA::TokenId& token);
-        void notifyCommitted(const EUROPA::TokenId& token);
-        void notifyTerminated(const EUROPA::TokenId& token);
-        
-        pimpl &m_self;
-      };
-      
-
-      propagator::id                 m_propagator;
-      boost::scoped_ptr<token_proxy> m_proxy;
-      friend class token_proxy;
+      propagator::id                      m_propagator;
+      boost::scoped_ptr<dispatch_manager> m_disp;
     }; // europtus::planner::assmebly::pimpl
     
   }

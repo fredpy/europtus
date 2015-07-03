@@ -14,6 +14,7 @@ class survey_pair {
 class WhalePos extends Timeline {
     predicate Position {
 	float latitude, longitude;
+	duration == 1;
     }
 
     WhalePos() {

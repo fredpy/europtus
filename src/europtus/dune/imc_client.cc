@@ -144,9 +144,12 @@ tr::goal_id imc_client::get_token(imc::TrexToken *g, bool is_goal) {
 
 
 
-void imc_client::start_imc(int id, int port, clock &clk) {
+void imc_client::start_imc(int id, int port, std::string const &neptus_ip, int neptus_port,
+                           clock &clk) {
   if( active() )
     throw exception("imc already connected");
+  m_neptus_ip = neptus_ip;
+  m_neptus_port = neptus_port;
   m_adapter.setTrexId(id);
   m_adapter.set_proxy(new clock_proxy(clk));
   if( !m_adapter.bind(port) ) {
@@ -166,6 +169,34 @@ void imc_client::stop_imc() {
   m_adapter.unbind();
 }
 
+void imc_client::request(TREX::transaction::goal_id g) {
+  if( g && active() ) {
+    m_strand.post(boost::bind(&imc_client::async_request, this, g));
+  }
+}
+
+void imc_client::async_request(TREX::transaction::goal_id g) {
+  if( active() ) {
+    imc::TrexOperation op;
+    imc::TrexToken tok;
+    
+    std::ostringstream oss;
+    oss<<g;
+    op.goal_id = oss.str();
+    
+    m_adapter.asImcMessage(m_date, *g, &tok);
+    op.token.set(&tok);
+    op.op = imc::TrexOperation::OP_POST_GOAL;
+    
+    if( m_neptus_port!=0 && !m_neptus_ip.empty() ) {
+      if( m_adapter.send(&op, m_neptus_ip, m_neptus_port) )
+        op.toText(log("neptus")<<"sent to "<<m_neptus_ip<<':'<<m_neptus_port<<"\n");
+      else
+        log(tlog::error)<<"Failed to send goal to "<<m_neptus_ip<<':'<<m_neptus_port;
+    }
+  }
+}
+
 
 void imc_client::on_tick(imc_client::conn const &c,
                          europtus::clock &clk,
@@ -178,12 +209,13 @@ void imc_client::on_tick(imc_client::conn const &c,
   else if( !m_polling ) {
     // we need to reinitiate poll
     m_polling = true;
-    m_strand.post(boost::bind(&imc_client::async_poll, this));
+    m_strand.post(boost::bind(&imc_client::async_poll, this, tick));
   }
 }
 
-void imc_client::async_poll() {
+void imc_client::async_poll(clock::tick_type date) {
   sig2::shared_connection_block lock(m_conn);
+  m_date = date;
   if( m_polling ) {
     UNIQ_PTR<imc::Message> msg(m_adapter.poll());
     
@@ -192,7 +224,7 @@ void imc_client::async_poll() {
       m_polling = false;
     } else {
       // post next poll
-      m_strand.post(boost::bind(&imc_client::async_poll, this));
+      m_strand.post(boost::bind(&imc_client::async_poll, this, date));
       log("MSG")<<msg->getId();
       
       // Now process the message

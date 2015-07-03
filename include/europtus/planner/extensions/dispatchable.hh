@@ -37,13 +37,32 @@
 # include "europtus/planner/propagator.hh"
 
 # include "europtus/planner/bits/europa_cfg.hh"
+# include <PLASMA/PlanDatabaseDefs.hh>
 # include <PLASMA/Constraint.hh>
-# include <PLASMA/Token.hh>
 
 namespace europtus {
   namespace planner {
+    
+    class europtus_cstr :public EUROPA::Constraint {
+    public:
+      europtus_cstr(EUROPA::LabelStr const &name,
+                    EUROPA::LabelStr const &propagatorName,
+                    EUROPA::ConstraintEngineId const &cstr,
+                    std::vector<EUROPA::ConstrainedVariableId> const &vars);
+      virtual ~europtus_cstr();
+      
+    protected:
+      virtual void cleanup() =0;
+      void handleDiscard();
+      
+      bool connected() const;
+      assembly::pimpl &self() const;
+    
+    private:
+      mutable propagator::id m_prop;
+    };
 
-    class dispatchable :public EUROPA::Constraint {
+    class dispatchable :public europtus_cstr {
     public:
       dispatchable(EUROPA::LabelStr const &name,
                    EUROPA::LabelStr const &propagatorName,
@@ -54,19 +73,34 @@ namespace europtus {
     private:
       void handleActivate();
       void handleExecute();
-      void handleDiscard();
       
       void dispatch(bool direct);
       
-      bool connected() const;
-      assembly::pimpl &self() const;
-      
       void cleanup();
       
-      mutable propagator::id   m_prop;
-      EUROPA::TokenId m_token;
-      EUROPA::Domain &m_var;
-      bool            m_pending;
+      EUROPA::ConstrainedVariableId m_guard;
+      EUROPA::TokenId               m_token;
+      EUROPA::Domain               &m_var;
+      bool                          m_pending;
+    };
+    
+    class self_justify :public europtus_cstr {
+    public:
+      self_justify(EUROPA::LabelStr const &name,
+                   EUROPA::LabelStr const &propagatorName,
+                   EUROPA::ConstraintEngineId const &cstr,
+                   std::vector<EUROPA::ConstrainedVariableId> const &vars);
+      ~self_justify();
+
+    private:
+      void handleExecute();
+      
+      void justify();
+      void cleanup();
+
+      EUROPA::TokenId               m_token;
+      EUROPA::Domain               &m_var;
+      bool                          m_pending;
     };
     
   }

@@ -1,3 +1,8 @@
+# neptus/dune related
+neptus_ip=@NEPTUS_IP@
+neptus_port=@NEPTUS_PORT@
+
+# europa related 
 path=@CMAKE_SOURCE_DIR@/domains
 dbg_europa=Debug.cfg
 # could be just PlannerConfig.xml but full path ensure that we load the correct one
@@ -12,3 +17,4 @@ end_date=18:00:00Z
 
 # max duration set to 12 hours
 duration=12:00:00
+

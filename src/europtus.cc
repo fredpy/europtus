@@ -181,7 +181,9 @@ int main(int argc, char *argv[]) {
   size_t threads=2;
   // tick frequency info (1 second by default)
   unsigned long long hours=0, minutes=0, seconds=1, millis=0;
-  unsigned imc_port=7030, imc_id=65432;
+  unsigned imc_port=7030, imc_id=65432, neptus_port=0;
+  std::string neptus_ip;
+  
   std::string europa_dbg_cfg("Debug.cfg"), europa_solver("PlannerConfig.xml"), log_file("europtus.log");
   
   // default end date (default largest possible date)
@@ -218,10 +220,14 @@ int main(int argc, char *argv[]) {
      "Set seconds in tick frequency")
     ("milliseconds", po::value<unsigned long long>(&millis)->implicit_value(0)->value_name("<int>"),
      "Set milliseconds in tick frequency")
-    ("port_imc,p", po::value<unsigned>(&imc_port)->implicit_value(imc_port)->value_name("<int>"),
-     "Set the UDP port for IMC")
     ("id_imc", po::value<unsigned>(&imc_id)->implicit_value(imc_id)->value_name("<int>"),
      "Set the IMC id for this program")
+    ("port_imc,p", po::value<unsigned>(&imc_port)->implicit_value(imc_port)->value_name("<int>"),
+     "Set the UDP port for IMC")
+    ("neptus_ip", po::value<std::string>(&neptus_ip)->value_name("<url>"),
+     "Set the IP address for Neptus")
+    ("neptus_port", po::value<unsigned>(&neptus_port)->value_name("<int>"),
+     "Set the UDP port for Neptus")
     ("dbg_europa", po::value<std::string>(&europa_dbg_cfg)->implicit_value(europa_dbg_cfg)->value_name("<file>"),
      "Load europa debug information from <file>.\n"
      "All europa log outputs from this file will be in europa_dbg.log")
@@ -391,9 +397,15 @@ int main(int argc, char *argv[]) {
   europtus::planner::assembly europa(pool.service(), clock, log);
   europtus::dune::imc_client imc(log);
   
+  europa.on_dispatch().connect(boost::bind(&europtus::dune::imc_client::request,
+                                           boost::ref(imc), _1));
   imc.on_token().connect(boost::bind(&new_imc_tok, boost::ref(europa), _1, _2));
   // TODO: set the proper id and port
-  imc.start_imc(imc_id, imc_port, clock);
+  if( neptus_ip.empty() || neptus_port==0 ) {
+    log(tlog::warn)<<"will not send message to neptus: \""<<neptus_ip
+      <<":"<<neptus_port<<"\" is invalid";
+  }
+  imc.start_imc(imc_id, imc_port, neptus_ip, neptus_port, clock);
   
   // I needed assembly to do this part so this option is parsed after
   // the main inits
@@ -449,30 +461,40 @@ int main(int argc, char *argv[]) {
       
       if( opt_val.count("test") ) {
         tr::goal_id g;
-//        
-//        if( cur==1 ) {
-//          g = MAKE_SHARED<tr::Goal>("auv1.drifter", "Inactive");
-//          g->restrictStart(tr::IntegerDomain(-20));
-//        }
-//      
-//        if( cur==2 ) {
-//          g = MAKE_SHARED<tr::Goal>("auv2.drifter", "Inactive");
-//          g->restrictStart(tr::IntegerDomain(-18));
-//        }
-//      
-//        if( cur==12 ) {
-//          g = MAKE_SHARED<tr::Goal>("whale.estate", "Position");
-//          g->restrictStart(tr::IntegerDomain(3));
-//          g->restrictAttribute(tr::Variable("latitude",
-//                                          tr::FloatDomain(0.6658485111)));
-//          g->restrictAttribute(tr::Variable("longitude",
-//                                            tr::FloatDomain(-0.4966177319)));
-//        }
-        if( cur==10 ) {
-          g = MAKE_SHARED<tr::Goal>("lsts", "charge");
+        
+        if( cur==3 ) {
+          g = MAKE_SHARED<tr::Goal>("auv2.drifter", "Inactive");
+          g->restrictStart(tr::IntegerDomain(-10));
+        }
+        if( cur==4 ) {
+          g = MAKE_SHARED<tr::Goal>("auv1.drifter", "Inactive");
           g->restrictStart(tr::IntegerDomain(2));
-          g->restrictAttribute(tr::Variable("end_level",
-                                            tr::FloatDomain(100.0)));
+        }
+        
+        if( cur==6 ) {
+          g = MAKE_SHARED<tr::Goal>("auv1.estate", "Position");
+          g->restrictStart(tr::IntegerDomain(4));
+          g->restrictAttribute(tr::Variable("latitude",
+                                            tr::FloatDomain(0.6658486111)));
+          g->restrictAttribute(tr::Variable("longitude",
+                                            tr::FloatDomain(-0.4966177319)));
+        }
+        if( cur==8 ) {
+          g = MAKE_SHARED<tr::Goal>("auv2.estate", "Position");
+          g->restrictStart(tr::IntegerDomain(0));
+          g->restrictAttribute(tr::Variable("latitude",
+                                            tr::FloatDomain(0.6658486411)));
+          g->restrictAttribute(tr::Variable("longitude",
+                                            tr::FloatDomain(-0.496617732)));
+        }
+        
+        if( cur==16 ) {
+          g = MAKE_SHARED<tr::Goal>("whale.estate", "Position");
+          g->restrictStart(tr::IntegerDomain(13));
+          g->restrictAttribute(tr::Variable("latitude",
+                                            tr::FloatDomain(0.6658485111)));
+          g->restrictAttribute(tr::Variable("longitude",
+                                            tr::FloatDomain(-0.4966177319)));
         }
           
         if( g )

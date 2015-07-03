@@ -177,7 +177,8 @@ void ModuleEuroptus::initialize(EngineId engine) {
   
   REGISTER_CONSTRAINT(ceSchema, dispatchable,
                       "dispatchable", "europtus");
-
+  REGISTER_CONSTRAINT(ceSchema, self_justify,
+                      "justify", "europtus");
   
   REGISTER_CONSTRAINT(ceSchema,
                       ceil_constraint,

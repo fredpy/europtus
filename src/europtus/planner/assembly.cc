@@ -177,6 +177,10 @@ bool assembly::locate(path &p) const {
   }
 }
 
+assembly::request_sig &assembly::on_dispatch() {
+  return m_impl->on_dispatch();
+}
+
 // modifiers
 
 void assembly::set_debug(path cfg_file) {

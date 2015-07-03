@@ -56,6 +56,7 @@ namespace europtus {
     class assembly :boost::noncopyable {
     public:
       class pimpl;
+      typedef boost::signals2::signal<void (TREX::transaction::goal_id)> request_sig;
 
       typedef boost::filesystem::path path;
       static std::string const s_now;
@@ -87,6 +88,8 @@ namespace europtus {
       void observation(TREX::transaction::Goal const &obs);
       void request(TREX::transaction::goal_id req);
       void request(TREX::transaction::Goal const &req);
+      
+      request_sig &on_dispatch();
       
     private:
       enum europa_priority {

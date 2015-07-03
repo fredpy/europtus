@@ -85,11 +85,14 @@ include_directories(
 
 add_definitions(${trex_CPPFLAGS})
 
+set(NEPTUS_IP "" CACHE STRING "Default IP address for Neptus")
+set(NEPTUS_PORT 0 CACHE STRING "Default port for Neptus")
 
 configure_file(include/europtus/bits/version.hh.in
   include/europtus/bits/version.hh)
 configure_file(include/europtus/planner/bits/europa_config.hh.in
   include/europtus/planner/bits/europa_cfg.hh)
+  
 # A simple configuration file
 configure_file(src/europtus.ini.in europtus.ini)
 
@@ -104,6 +107,7 @@ add_executable(europtus
   src/europtus/dune/clock.cc
   src/europtus/dune/imc_client.cc
   src/europtus/planner/assembly.cc
+  src/europtus/planner/dispatch_manager.cc
   src/europtus/planner/europa_protect.cc
   src/europtus/planner/exception.cc
   src/europtus/planner/ModuleEuroptus.cc
@@ -133,6 +137,7 @@ add_executable(europtus
   include/europtus/dune/clock.hh
   include/europtus/dune/imc_client.hh
   include/europtus/planner/assembly.hh
+  include/europtus/planner/dispatch_manager.hh
   include/europtus/planner/europa_protect.hh
   include/europtus/planner/exception.hh
   include/europtus/planner/propagator.hh

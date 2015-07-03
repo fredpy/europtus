@@ -57,6 +57,7 @@ namespace te=TREX::europa;
 namespace eu=EUROPA;
 namespace eu_s=eu::SOLVERS;
 
+
 namespace {
   
   std::string const implicit_s("implicit_");
@@ -71,116 +72,10 @@ namespace {
     return out;
   }
   
-  std::ostream &print_token(std::ostream &out, eu::Token const &tok) {
-    out<<'['<<tok.getKey()<<"] "<<tok.getObject()->toString()<<"."
-      <<tok.getUnqualifiedPredicateName().toString()<<"(";
-    
-    typedef std::vector<eu::ConstrainedVariableId> var_set;
-    var_set vars = tok.parameters();
-    bool first = true;
-    
-    if( tok.start()->lastDomain().areBoundsFinite() ) {
-      print_variable(out, "start", tok.start()->lastDomain());
-      first = false;
-    }
-    if( tok.end()->lastDomain().areBoundsFinite() ) {
-      if( first )
-        first = false;
-      else
-        out<<", ";
-      print_variable(out, "end", tok.end()->lastDomain());
-    }
-    
-    for(var_set::const_iterator i=vars.begin(); vars.end()!=i; ++i) {
-      std::string name = (*i)->getName().toString();
-      if( name.compare(0, implicit_s.size(), implicit_s)!=0 ) {
-        if( first )
-          first = false;
-        else
-          out<<", ";
-        print_variable(out, name, (*i)->lastDomain());
-      }
-    }
-    return out<<")";
-  }
   
   tu::Symbol s_justify("just");
   tu::Symbol s_unjustify("unjust");
   
-}
-
-/*
- * class europtus::planner::assembly::pimpl::token_proxy
- */
-
-// structors
-
-assembly::pimpl::token_proxy::token_proxy(assembly::pimpl &me)
-:eu::PlanDatabaseListener(me.m_plan), m_self(me) {
-}
-
-assembly::pimpl::token_proxy::~token_proxy() {
-}
-
-
-// callbacks
-
-void assembly::pimpl::token_proxy::notifyAdded(const eu::TokenId& token) {
-}
-
-void assembly::pimpl::token_proxy::notifyRemoved(const eu::TokenId& token) {
-}
-
-void assembly::pimpl::token_proxy::notifyActivated(const eu::TokenId& token) {
-  if( token->isFact() )
-    m_self.justify(token, token);
-  else {
-    if( m_self.is_condition(token) ) {
-      eu::TokenId master = token->master();
-      if( m_self.is_action(master) && m_self.justified(master) )
-        m_self.justify(token, master);
-    } else if( m_self.is_action(token) ) {
-      m_self.m_guarded.insert(token);
-    }
-  }
-}
-
-void assembly::pimpl::token_proxy::notifyDeactivated(const eu::TokenId& token) {
-  m_self.unjustify(token);
-  if( m_self.is_action(token) )
-    m_self.m_guarded.erase(token);
-  m_self.unschedulled(token);
-}
-
-void assembly::pimpl::token_proxy::notifyMerged(const eu::TokenId& token) {
-  eu::TokenId me = token->getActiveToken();
-
-  if( token->isFact() ) {
-    m_self.justify(token, token);
-  } else {
-    if( m_self.is_condition(token) ) {
-      eu::TokenId master = token->master();
-      if( m_self.is_action(master) && m_self.justified(master) ) {
-        m_self.justify(token, master);
-      }
-    }
-  }
-}
-
-void assembly::pimpl::token_proxy::notifySplit(const eu::TokenId& token) {
-  m_self.unjustify(token);
-}
-
-void assembly::pimpl::token_proxy::notifyRejected(const eu::TokenId& token) {
-}
-
-void assembly::pimpl::token_proxy::notifyReinstated(const eu::TokenId& token) {
-}
-
-void assembly::pimpl::token_proxy::notifyCommitted(const eu::TokenId& token) {
-}
-
-void assembly::pimpl::token_proxy::notifyTerminated(const eu::TokenId& token) {
 }
 
 
@@ -207,12 +102,47 @@ using europtus::clock;
 boost::filesystem::path const assembly::pimpl::s_europa(EUROPA_HOME"/include");
 
 
+std::ostream &assembly::pimpl::print_token(std::ostream &out, eu::Token const &tok) {
+  out<<'['<<tok.getKey()<<"] "<<tok.getObject()->toString()<<"."
+  <<tok.getUnqualifiedPredicateName().toString()<<"(";
+  
+  typedef std::vector<eu::ConstrainedVariableId> var_set;
+  var_set vars = tok.parameters();
+  bool first = true;
+  
+  if( tok.start()->lastDomain().areBoundsFinite() ) {
+    print_variable(out, "start", tok.start()->lastDomain());
+    first = false;
+  }
+  if( tok.end()->lastDomain().areBoundsFinite() ) {
+    if( first )
+      first = false;
+    else
+      out<<", ";
+    print_variable(out, "end", tok.end()->lastDomain());
+  }
+  
+  for(var_set::const_iterator i=vars.begin(); vars.end()!=i; ++i) {
+    std::string name = (*i)->getName().toString();
+    if( name.compare(0, implicit_s.size(), implicit_s)!=0 ) {
+      if( first )
+        first = false;
+      else
+        out<<", ";
+      print_variable(out, name, (*i)->lastDomain());
+    }
+  }
+  return out<<")";
+}
+
+
 // structor
 
 assembly::pimpl::pimpl(clock &c, tlog::text_log &log)
   :m_lost(0), m_clock(c),m_planning(false),m_pending(false),
-  m_log(log) {
-   
+  m_log(log) {}
+
+void assembly::pimpl::initialize() {
   // Populate europa with desired modules
   addModule((new eu::ModuleConstraintEngine())->getId());
   addModule((new eu::ModuleConstraintLibrary())->getId());
@@ -234,17 +164,18 @@ assembly::pimpl::pimpl(clock &c, tlog::text_log &log)
   m_plan   = ((eu::PlanDatabase *)getComponent("PlanDatabase"))->getId();
   
   m_propagator = (new propagator(*this, eu::LabelStr("europtus"), m_cstr))->getId();
-    
+  
   m_cstr->setAutoPropagation(false);
   eu::DomainComparator::setComparator((eu::Schema *)m_schema);
   
-  m_proxy.reset(new token_proxy(*this));
+  m_disp.reset(new dispatch_manager(shared_from_this(), m_plan));
 }
+
 
 
 assembly::pimpl::~pimpl() {
   // make sure that my module is removed before this class is destroyed
-  m_proxy.reset();
+  m_disp.reset();
   removeModule(m_europtus);
   doShutdown();
 }
@@ -267,43 +198,12 @@ bool assembly::pimpl::have_predicate(eu::ObjectId const &object,
 
 bool assembly::pimpl::is_fact(eu::TokenId const &tok,
                              bool or_merged_to) const {
-  if( tok.isId() ) {
-    bool fact = tok->isFact();
-    
-    if( !fact && or_merged_to ) {
-      if( tok->isActive() ) {
-        eu::TokenSet merged = tok->getMergedTokens();
-        
-        for(eu::TokenSet::const_iterator m=merged.begin();
-            merged.end()!=m; ++m) {
-          if( (*m)->isFact() )
-            return true;
-        }
-      } else if( tok->isMerged() ) {
-        eu::TokenId real = tok->getActiveToken();
-        return is_fact(real);
-      }
-    }
-    return fact;
-  }
-  return false;
+  return m_disp && m_disp->is_fact(tok, or_merged_to);
 }
 
-
-bool assembly::pimpl::justified(eu::TokenId tok) const {
-  if( tok->isFact() )
-    return true;
-  eu::TokenId me = tok;
-  if( tok->isMerged() )
-    me = tok->getActiveToken();
-
-  token_map::left_const_iterator from, to;
-  boost::tie(from, to) = m_justified.left.equal_range(me);
-  return from!=to;
-}
 
 bool assembly::pimpl::is_action(eu::TokenId const &tok) const {
-  return tok.isId() && tok->hasAttributes(eu::PSTokenType::ACTION);
+  return m_disp && m_disp->is_action(tok);
 }
 
 bool assembly::pimpl::is_predicate(eu::TokenId const &tok) const {
@@ -311,135 +211,119 @@ bool assembly::pimpl::is_predicate(eu::TokenId const &tok) const {
 }
 
 bool assembly::pimpl::is_condition(eu::TokenId  const &tok) const {
-  return tok.isId() && tok->hasAttributes(eu::PSTokenType::CONDITION);
+  return m_disp && m_disp->is_condition(tok);
 }
 
 bool assembly::pimpl::is_effect(eu::TokenId const &tok) const {
-  return tok.isId() && tok->hasAttributes(eu::PSTokenType::EFFECT);
+  return m_disp && m_disp->is_effect(tok);
 }
 
 void assembly::pimpl::effect_for(eu::TokenId const &tok,
-                                 eu::TokenSet &actions,
-                                 bool recurse) const {
-  if( is_effect(tok) )
-    actions.insert(tok->master());
-  if( tok->isMerged() && recurse )
-    effect_for(tok->getActiveToken(), actions, false);
-  else if( tok->isActive() ) {
-    eu::TokenSet const &merged = tok->getMergedTokens();
-    for(eu::TokenSet::const_iterator m=merged.begin(); merged.end()!=m; ++m)
-      effect_for(*m, actions, false);
-  }
+                                 eu::TokenSet &actions) const {
+  if( m_disp )
+    m_disp->effect_for(tok, actions);
 }
 
 
 // manipulators
 
-bool assembly::pimpl::schedulled(EUROPA::TokenId tok) {
+bool assembly::pimpl::justified(EUROPA::TokenId const &tok) const {
+  return m_disp && m_disp->justified(tok);
+}
+
+void assembly::pimpl::justify(EUROPA::TokenId const &tok) {
+  if( m_disp )
+    m_disp->justify(tok);
+}
+
+void assembly::pimpl::unjustify(EUROPA::TokenId const &tok) {
+  if( m_disp )
+    m_disp->unjustify(tok);
+}
+
+
+void assembly::pimpl::schedulled(EUROPA::TokenId tok) {
+  m_disp->schedulled(tok);
+}
+
+void assembly::pimpl::unschedulled(EUROPA::TokenId tok) {
+  m_disp->unschedulled(tok);
+}
+
+assembly::request_sig &assembly::pimpl::on_dispatch() {
+  return m_request;
+}
+
+void assembly::pimpl::dispatch(EUROPA::TokenId const &tok, bool direct) {
   if( tok.isId() ) {
-    eu::TokenSet::iterator pos;
-    bool inserted;
+    // convert the europa token into TREX format
+    eu::ObjectDomain const &dom = tok->getObject()->lastDomain();
+    eu::ObjectId obj = dom.makeObjectList().front();
+    tu::Symbol name(obj->getName().toString()),
+    pred(tok->getUnqualifiedPredicateName().c_str());
+    tr::goal_id req = MAKE_SHARED<tr::Goal>(name, pred);
     
-    boost::tie(pos, inserted) = m_schedulled.insert(tok);
-    if( inserted )
-      print_token(log("dispatch")<<"schedulled ", *tok);
-    return inserted;
-  }
-  return false;
-}
-
-bool assembly::pimpl::unschedulled(EUROPA::TokenId tok) {
-  if( tok.isId() ) {
-    if( !m_schedulled.erase(tok) ) {
-      bool ret = m_dispatch.erase(tok);
-      if( ret )
-        log("dispatch")<<m_dispatch.size()<<" dispatches";
-      else
-        return false;
-    }
-    print_token(log("dispatch")<<"unschedulled ", *tok);
-    return true;
-  }
-  return false;
-}
-
-
-
-bool assembly::pimpl::add_dispatchable(EUROPA::TokenId tok, bool direct) {
-  if( tok.isId() ) {
-    dispatch_table::iterator pos;
-    bool inserted;
+    std::vector<EUROPA::ConstrainedVariableId> const &attrs = tok->parameters();
+    // Get start, duration and end
+    UNIQ_PTR<tr::DomainBase>
+    d_start(te::details::trex_domain(tok->start()->lastDomain())),
+    d_duration(te::details::trex_domain(tok->duration()->lastDomain())),
+    d_end(te::details::trex_domain(tok->end()->lastDomain()));
     
-    boost::tie(pos, inserted) = m_dispatch.insert(std::make_pair(tok, direct));
-    if( !inserted )
-      pos->second = direct;
-    else
-      m_schedulled.erase(tok);
-    log("dispatch")<<m_dispatch.size()<<" dispatches";
-    return inserted;
-  }
-  return false;
-}
-
-
-void assembly::pimpl::justify(eu::TokenId tok, eu::TokenId just) {
-  
-  if( !tok->isInactive() ) {
-    token_map::left_const_iterator from, to, i;
-    boost::tie(from, to) = m_justified.left.equal_range(tok);
-  
-    if( from!=to ) {
-      // it was justifed but was it self justified ?
-      for(i=from; i!=to; ++i)
-        if( i->second==just )
-          return;
+    req->restrictTime(*dynamic_cast<tr::IntegerDomain *>(d_start.get()),
+                          *dynamic_cast<tr::IntegerDomain *>(d_duration.get()),
+                          *dynamic_cast<tr::IntegerDomain *>(d_end.get()));
+    
+    for(std::vector<EUROPA::ConstrainedVariableId>::const_iterator a=attrs.begin();
+        attrs.end()!=a; ++a) {
+      // Exclude "implicit_var_*"
+      if( 0!=(*a)->getName().toString().compare(0, implicit_s.length(), implicit_s) ) {
+        UNIQ_PTR<tr::DomainBase> dom(te::details::trex_domain((*a)->lastDomain()));
+        tr::Variable attr((*a)->getName().toString(), *dom);
+        req->restrictAttribute(attr);
+      }
     }
-    m_justified.insert(token_map::relation(tok, just));
-    if( just==tok ) {
-      print_token(log(s_justify), *tok);
-    } else {
-      print_token(print_token(log(s_justify), *tok)<<"\n <- ", *just);
-    }
-  
-    if( tok->isMerged() )
-      justify(tok->getActiveToken(), tok);
-    else if( tok->isActive() ) {
-//      if( is_action(tok) ) {
-//        // if an action is justified I can assume that all of its conditions are (??)
-      // the answer is either no or I need to change my model
-//        eu::TokenSet const &sl = tok->slaves();
-//        for(eu::TokenSet::const_iterator i=sl.begin(); sl.end()!=i; ++i) {
-//          eu::TokenId s = *i;
-//          if( is_condition(s) )
-//            justify(s, tok);
-//        }
-//      }
-      // an effect justify its action (??)
-      eu::TokenSet actions;
-      effect_for(tok, actions);
-      for(eu::TokenSet::const_iterator a=actions.begin(); actions.end()!=a; ++a)
-        justify(*a, tok);
+    
+    log("REQUEST")<<'['<<req<<"] "<<*req;
+    m_request(req);
+
+    // TODO: send the message
+
+    if( direct ) {
+      eu::eint::basis_type e_cur = static_cast<eu::eint::basis_type>(m_clock.current());
+
+      eu::ObjectDomain const &dom = tok->getObject()->lastDomain();
+      eu::ObjectId obj = dom.makeObjectList().front();
+    
+      eu::TokenId f = new_token(obj, tok->getPredicateName().c_str(), true);
+      eu::IntervalIntDomain t_start = tok->start()->lastDomain();
+      
+      if( t_start.isMember(e_cur+1) ) {
+        t_start.intersect(e_cur+1, e_cur+1);
+      } else if( t_start.isMember(e_cur) ) {
+        t_start.intersect(e_cur, e_cur);
+      } else if( t_start.getLowerBound()>e_cur+1 ) {
+        t_start.intersect(t_start.getLowerBound(), t_start.getLowerBound());
+      }
+      f->start()->restrictBaseDomain(t_start);
+      
+      std::vector<eu::ConstrainedVariableId> const &attrs = tok->parameters();
+      for(std::vector<eu::ConstrainedVariableId>::const_iterator v=attrs.begin();
+          attrs.end()!=v; ++v) {
+        f->getVariable((*v)->getName())->restrictBaseDomain((*v)->lastDomain());
+        if( (*v)->lastDomain().isSingleton() )
+          f->getVariable((*v)->getName())->specify((*v)->lastDomain().getSingletonValue());
+      }
+      eu::DbClientId cli = m_plan->getClient();
+      cli->merge(f, tok);
+      m_forcefully_injected.insert(std::make_pair(m_solver->getDepth(), f));
     }
   }
 }
 
-void assembly::pimpl::unjustify(eu::TokenId tok) {
-  token_map::right_iterator from, to, i;
-  boost::tie(from, to) = m_justified.right.equal_range(tok);
-  
-  if( from!=to ) {
-    eu::TokenSet to_check;
-    for(i=from; i!=to; ++i) {
-      if( i->second!=tok )
-        to_check.insert(i->second);
-    }
-    print_token(log(s_unjustify)<<"(self) ", *tok);
-    m_justified.right.erase(from, to);
-    for (eu::TokenSet::const_iterator t=to_check.begin(); to_check.end()!=t; ++t) {
-      if( !justified(*t) )
-        unjustify(*t);
-    }
-  }
+
+void assembly::pimpl::add_dispatchable(EUROPA::TokenId tok, bool direct) {
+  m_disp->make_dispatchable(tok, direct);
 }
 
 
@@ -554,22 +438,65 @@ void assembly::pimpl::do_step() {
         } else {
           std::multimap<eu_s::Priority, std::string>
           decisions = m_solver->getOpenDecisions();
+          size_t unfilt_size = decisions.size();
           
-          std::ostringstream oss;
+          if( unfilt_size>1 ) {
+            std::set<std::string> cache;
+            std::multimap<eu_s::Priority, std::string>::iterator i = decisions.begin();
           
-          oss<<"Decisions left: "<<decisions.size()
-          <<"\n   - (steps = "<<(m_solver->getStepCount()+m_lost)
-          <<", depth = "<<m_solver->getDepth()<<")";
-          if( !decisions.empty() ) {
-            std::multimap<eu_s::Priority, std::string>::const_iterator
-            d = decisions.begin();
-            oss<<"\n   - Next decision: <"<<d->first<<", "<<d->second<<">";
+            while( decisions.end()!=i ) {
+              if( cache.insert(i->second).second ) {
+                ++i;
+              } else {
+                // this flaw was already there
+                decisions.erase(i++);
+              }
+            }
           }
           
-          if( m_solver->getDepth()>0 )
-            oss<<"\n   - Last decision: "<<m_solver->getLastExecutedDecision();
           
-          oss<<"\n"<<m_solver->printOpenDecisions();
+          std::ostringstream oss;
+          std::multimap<eu_s::Priority, std::string>::const_iterator
+          d = decisions.begin();
+          
+          
+          oss<<"Decisions left: "<<decisions.size();
+          if( decisions.size()<unfilt_size )
+            oss<<"("<<unfilt_size<<")";
+          oss<<"\n   - (steps = "<<(m_solver->getStepCount()+m_lost)
+            <<", depth = "<<m_solver->getDepth()<<")";
+          
+          bool verbose = true;
+          
+          if( !verbose ) {
+            if( !decisions.empty() ) {
+              oss<<"\n   - Next decision: <"<<d->first<<", "<<d->second<<">";
+            }
+          
+            if( m_solver->getDepth()>0 )
+              oss<<"\n   - Last decision: "<<m_solver->getLastExecutedDecision();
+          } else {
+            oss<<"\n   - flaw stack {";
+            for( ; decisions.end()!=d; ++d)
+              oss<<"\n      "<<d->first<<": "<<d->second;
+            if( !decisions.empty() )
+              oss<<"\n    ";
+            oss.put('}');
+          
+            eu_s::DecisionStack const &stack = m_solver->getDecisionStack();
+            size_t count = stack.size();
+            if( !stack.empty() ) {
+              oss<<"\n   - decisions stack (last 10) {";
+          
+              size_t c = 0;
+              for(eu_s::DecisionStack::const_reverse_iterator i=stack.rbegin();
+                  stack.rend()!=i && c<10; ++i, --count, ++c) {
+                eu_s::DecisionPointId x = (*i);
+                oss<<"\n      "<<count<<": "<<x->toShortString();
+              }
+              oss<<"\n    }";
+            }
+          }
           log()<<oss.str();
           
           m_solver->step();
@@ -595,8 +522,7 @@ void assembly::pimpl::end_plan() {
   if( steps!=m_steps ) {
     log()<<"Planning completed after "
       <<(steps-m_steps)<<" steps:\n"
-    <<"  - steps="<<steps<<"\n"
-    <<"  - depth="<<m_solver->getDepth()<<"\n"
+    <<"  - (steps="<<steps<<", depth="<<m_solver->getDepth()<<")\n"
     <<"==============================================================\n"
     <<m_plan->toString()
     <<"\n=============================================================="
@@ -612,11 +538,31 @@ void assembly::pimpl::end_plan() {
 eu::TokenId assembly::pimpl::new_token(eu::ObjectId const &obj,
                                        std::string pred,
                                        bool is_fact) {
+  static size_t count = 0;
+  
   if( !have_predicate(obj, pred) )
     throw exception("Object \""+obj->getName().toString()
                     +"\" do not have predicate \""+pred+"\"");
   eu::DbClientId cli = m_plan->getClient();
-  eu::TokenId tok = cli->createToken(pred.c_str(), NULL,
+  
+  std::ostringstream name;
+  
+  if( is_fact )
+    name.put('f');
+  else
+    name.put('r');
+  
+  size_t last_dot = pred.find_last_of('.');
+  
+  if( last_dot==std::string::npos )
+    last_dot = 0;
+  else
+    last_dot += 1;
+  
+  name<<'_'<<obj->getName().toString()<<'.'<<pred.substr(last_dot)<<'_'<<(++count);
+  
+  
+  eu::TokenId tok = cli->createToken(pred.c_str(), name.str().c_str(),
                                      !is_fact, // a non fact is rejectable
                                      is_fact);
   
@@ -802,100 +748,28 @@ void assembly::pimpl::send_exec() {
 
 
 void assembly::pimpl::check_guarded() {
-  eu::eint::basis_type e_next = static_cast<eu::eint::basis_type>(m_clock.current()+1);
-  eu::TokenSet postponed;
-  eu::IntervalIntDomain future(e_next, std::numeric_limits<eu::eint>::infinity());
-
-  // traverse schedulled tokens that are still blocked
-  for(eu::TokenSet::const_iterator s=m_schedulled.begin(); m_schedulled.end()!=s; ++s) {
-    if( is_fact(*s) )
-      print_token(log("dispatch")<<"schedulled.is_fact(", **s)<<")";
-    else if( !(*s)->isInactive() ) {
-      eu::TokenSet actions;
-      effect_for(*s, actions);
-      
-      print_token(log("dispatch")<<"sched.effect(", **s)<<") = "<<actions.size();
-      // TODO: add the actions to postponed. It should be the case (!!?)
-      postponed.insert(*s);
-      
-    }
-  }
-  // pospone the tokens that are still guarded:
-  for(eu::TokenSet::const_iterator p=postponed.begin(); postponed.end()!=p; ++p) {
-    if( (*p)->start()->lastDomain().getUpperBound()>=e_next ) {
-      (*p)->start()->restrictBaseDomain(future);
-      if( (*p)->start()->lastDomain().getLowerBound()<e_next ) {
+  // TODO: make this mess less a big block and more a sett of more atomic calls
+  // intersliced with deliberation when needed
+  
+  if( m_disp ) {
+    eu::eint::basis_type e_cur = static_cast<eu::eint::basis_type>(m_clock.current());
+    eu::TokenSet postponed;
+    eu::IntervalIntDomain future(e_cur+1, std::numeric_limits<eu::eint>::infinity());
+  
+    if( m_disp->postponable(e_cur, postponed)>0 ) {
+      // Make all the postponable token to start after e_cur
+      for(eu::TokenSet::const_iterator p=postponed.begin(); postponed.end()!=p; ++p) {
         (*p)->start()->restrictBaseDomain(future);
         if( !m_cstr->propagate() ) {
+          log(tlog::warn)<<"Failed to set start of "<<(*p)->getName().toString()<<'('
+            <<(*p)->getKey()<<") to be after "<<e_cur;
           send_step();
           return;
         }
       }
-    } else
-      print_token(log(tlog::warn)<<"sched.past(", **p)<<")";
-  }
-  
-  // Now check the candidates
-  for(dispatch_table::const_iterator i=m_dispatch.begin(); m_dispatch.end()!=i; ++i) {
-    if( is_fact(i->first) ) {
-      print_token(log("dispatch")<<"dispatch.is_fact(", *(i->first))<<")";
-    } else {
-      eu::TokenSet actions;
-      effect_for(i->first, actions);
-      
-      // TODO: check if actions are guarded (?)
-      print_token(log("dispatch")<<"dispatch.effect(", *(i->first))<<") = "<<actions.size();
-      
-      bool to_send = false;
-      
-      if( actions.empty() )
-        to_send = true;
-      else {
-        for(eu::TokenSet::const_iterator a=actions.begin(); actions.end()!=a; ++a) {
-          bool guarded = false;
-          
-          if( !justified(*a) ) {
-            eu::TokenSet const &slaves = (*a)->slaves();
-            guarded = false;
-            
-            for(eu::TokenSet::const_iterator s=slaves.begin(); slaves.end()!=s; ++s) {
-              if( is_condition(*s) && !justified(*s) ) {
-                guarded = true;
-                break;
-              }
-            }
-          }
-          if( !guarded ) {
-            // this action is ready to fire
-            // TODO: check action start time
-            log("dispatch")<<(*a)->getPredicateName().toString()
-            <<": "<<(*a)->start()->toString()
-            <<" -> "<<i->first->getPredicateName().toString()
-            <<" : "<<i->first->start()->toString();
-            
-            // TODO: replace this fake by the real thing
-            if( i->second ) {
-              eu::ObjectDomain const &dom = i->first->getObject()->lastDomain();
-              eu::ObjectId obj = dom.makeObjectList().front();
-
-              eu::TokenId f = new_token(obj, i->first->getPredicateName().c_str(), true);
-              f->start()->restrictBaseDomain(i->first->start()->lastDomain());
-              std::vector<eu::ConstrainedVariableId> const &attrs = i->first->parameters();
-              for(std::vector<eu::ConstrainedVariableId>::const_iterator v=attrs.begin();
-                  attrs.end()!=v; ++v) {
-                f->getVariable((*v)->getName())->restrictBaseDomain((*v)->lastDomain());
-                if( (*v)->lastDomain().isSingleton() )
-                  f->getVariable((*v)->getName())->specify((*v)->lastDomain().getSingletonValue());
-              }
-              eu::DbClientId cli = m_plan->getClient();
-              cli->merge(f, i->first);
-              m_forcefully_injected.insert(std::make_pair(m_solver->getDepth(), f));
-              log("dispatch")<<m_plan->toString();
-            }
-          }
-        }
-      }
     }
+    
+    m_disp->do_dispatch(e_cur);
   }
 }
 

@@ -21,9 +21,15 @@
 
   <OpenConditionManager defaultPriority="20" component="EarliestFirst">
     <FlawFilter component="FactFilter" />
+    <FlawFilter class-match="plan_state" predicate-match="execute" />
+    <FlawFilter class-match="Battery" />
     <FlawHandler component="StandardOpenConditionHandler"/>
   </OpenConditionManager>
 
+ <OpenConditionManager defaultPriority="21" component="EarliestFirst">
+    <FlawFilter component="FactFilter" />
+    <FlawHandler component="StandardOpenConditionHandler"/>
+  </OpenConditionManager>
 
   <UnboundVariableManager defaultPriority="500">
     <FlawFilter component="doNotMatch">

@@ -33,6 +33,7 @@
  */
 #include "europtus/planner/extensions/dispatchable.hh"
 #include <PLASMA/RuleInstance.hh>
+#include <PLASMA/Token.hh>
 
 #include "../private/assembly_impl.hh"
 
@@ -57,18 +58,25 @@ namespace {
   
 }
 
-dispatchable::dispatchable(eu::LabelStr const &name,
-                           eu::LabelStr const &propagatorName,
-                           eu::ConstraintEngineId const &cstr,
-                           std::vector<eu::ConstrainedVariableId> const &vars)
-:eu::Constraint(name, propagatorName, cstr, vars),
-m_token(getParentToken(vars[0])),
-m_var(getCurrentDomain(vars[0])),
-m_pending(true) {
-  handleActivate();
+
+/*
+ * class europtus::planner::europtus_cstr
+ */
+
+// structors
+europtus_cstr::europtus_cstr(eu::LabelStr const &name,
+                             eu::LabelStr const &propagatorName,
+                             eu::ConstraintEngineId const &cstr,
+                             std::vector<eu::ConstrainedVariableId> const &vars)
+:eu::Constraint(name, propagatorName, cstr, vars), m_prop(propagator::id::noId()) {
 }
 
-bool dispatchable::connected() const {
+europtus_cstr::~europtus_cstr() {
+}
+
+// observers
+
+bool europtus_cstr::connected() const {
   if( m_prop.isNoId() ) {
     eu::PropagatorId prop = getPropagator();
     
@@ -79,13 +87,36 @@ bool dispatchable::connected() const {
   return true;
 }
 
-
-assembly::pimpl &dispatchable::self() const {
+assembly::pimpl &europtus_cstr::self() const {
   if( !connected() )
-    throw exception("dispatchable() not connected to europtus");
+    throw exception("europtus constraint not connected to europtus");
   return m_prop->self();
 }
 
+// callbacks
+
+void europtus_cstr::handleDiscard() {
+  cleanup();
+  eu::Constraint::handleDiscard();
+}
+
+
+
+/*
+ * class europtus::planner::dispatchable
+ */
+
+dispatchable::dispatchable(eu::LabelStr const &name,
+                           eu::LabelStr const &propagatorName,
+                           eu::ConstraintEngineId const &cstr,
+                           std::vector<eu::ConstrainedVariableId> const &vars)
+:europtus_cstr(name, propagatorName, cstr, vars),
+m_guard(eu::ConstrainedVariableId::noId()),
+m_token(getParentToken(vars[0])),
+m_var(getCurrentDomain(vars[0])),
+m_pending(true) {
+  handleActivate();
+}
 
 dispatchable::~dispatchable() {
   cleanup();
@@ -94,8 +125,6 @@ dispatchable::~dispatchable() {
 void dispatchable::dispatch(bool direct) {
   m_pending = false;
   if( connected() ) {
-    // TODO: do something to mark the token in assembly
-    self().log(getName().c_str())<<"dispatch("<<m_token->getPredicateName().toString()<<", "<<direct<<")";
     self().add_dispatchable(m_token, direct);
   } else
     debugMsg("europtus", "dispatchable() is not connected to europtus")
@@ -105,7 +134,6 @@ void dispatchable::handleActivate() {
   if( connected() && m_token.isId() )
     self().schedulled(m_token);
 }
-
 
 void dispatchable::handleExecute() {
   if( m_token.isId() && m_token->isActive() && m_pending ) {
@@ -118,9 +146,11 @@ void dispatchable::handleExecute() {
       eu::Domain const &d = getCurrentDomain(*v);
       
       if( !d.isSingleton() ) {
-        if( connected() )
+        if( connected() && m_guard!=*v ) {
+          m_guard = *v;
           self().log(getName().c_str())<<m_token->getPredicateName().toString()<<"("
           <<m_token->getKey()<<") still guarded by "<<(*v)->getName().toString();
+        }
         return;
       }
     }
@@ -135,14 +165,65 @@ void dispatchable::handleExecute() {
 void dispatchable::cleanup() {
   // TODO: do somethign to clean assembly
   if( !m_pending && connected() ) {
-    self().log(getName().c_str())<<"undispatch("<<m_token->getPredicateName().toString()<<")";
     self().unschedulled(m_token);
+    m_guard = eu::ConstrainedVariableId::noId();
+    m_pending = true;
+  }
+}
+
+/*
+ * class europtus::planner::dispatchable
+ */
+
+
+self_justify::self_justify(eu::LabelStr const &name,
+                           eu::LabelStr const &propagatorName,
+                           eu::ConstraintEngineId const &cstr,
+                           std::vector<eu::ConstrainedVariableId> const &vars)
+:europtus_cstr(name, propagatorName, cstr, vars),
+m_token(getParentToken(vars[0])),
+m_var(getCurrentDomain(vars[0])),
+m_pending(true) {}
+
+self_justify::~self_justify() {
+  cleanup();
+}
+
+void self_justify::handleExecute() {
+  if( m_token.isId() &&  m_token->isActive() && m_pending ) {
+    eu::BoolDomain true_dom(true);
+    typedef std::vector<eu::ConstrainedVariableId> scope;
+    
+    scope const &vars = getScope();
+    for(scope::const_iterator v = vars.begin(); vars.end()!=v; ++v) {
+      eu::Domain const &d = getCurrentDomain(*v);
+      
+      if( !d.isSingleton() )
+        return;
+    }
+    if(m_var.getSingletonValue()==true_dom.getSingletonValue())
+      justify();
+  }
+}
+
+void self_justify::justify() {
+  if( m_pending && connected() ) {
+    if( !self().justified(m_token) ) {
+//      self().log(getName().toString())<<"justify "<<m_token->getName().toString()<<'('
+//      <<m_token->getKey()<<')';
+      self().justify(m_token);
+      m_pending = false;
+    }
+  }
+}
+
+
+void self_justify::cleanup() {
+  if( !m_pending && connected() ) {
+    self().unjustify(m_token);
     m_pending = true;
   }
 }
 
 
-void dispatchable::handleDiscard() {
-  cleanup();
-  eu::Constraint::handleDiscard();
-}
+
