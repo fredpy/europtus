@@ -117,140 +117,128 @@ class AUV {
 }
 
 AUV::exec_survey {
-    TrexPath p;
-
-    // This cann only happend if we are done planning
-    contained_by(condition plan_state.execute my_exec);
-    
-    // effect: the survey did complete 
-    meets(effect DrifterFollow.Survey survey);
-    
-    // condition: was idling, have position, and have a speed control
-    met_by(condition DrifterFollow.Inactive idle);
+    // conditions
+    starts_during(condition plan_state.execute my_exec);
+    starts_during(condition DrifterFollow.Inactive idle);
     after(condition AUVPos.Position pos);
-    idle contains pos;
     contained_by(condition SpeedControl.Holds sp);
 
-    // just constraint to be DoSurvey during the whole time
-    //   as it is nt a contion or effect it should just be ignored by the executive
-    //   still it had constraints to the plan which help find the solution faster
-    equals(DrifterFollow.DoSurvey exec);
+    // constraints
+    ends(DrifterFollow.DoSurvey exec);
+    precedes(start, exec.start);
+    
+    // effects
+    meets(effect DrifterFollow.Survey survey);
 
-    // constrain all the DrifterFollow torelate to this auv
-    survey.object == object.drifter;
+    // object constraints
     idle.object == object.drifter;
     exec.object == object.drifter;
-    // constrain the pos to be of this AUV
+    survey.object == object.drifter;
     pos.object == object.estate;
-    // constrain the speed to be of this AUV
     sp.object == object.speed;
-    
+
+   
+    TrexPath p;
+    float _bind_u_2, _bind_v_2, _bind_heading;
+    float heading_deg, cos_angle, sin_angle, speed_2, drift_speed, my_speed;
+    float o_lat, o_lon;
+    float shift_ax, shift_ay, shift_zx, shift_zy;
+
+    // effect constraints
     p == survey.path;
-
-    // Now compute the survey properties
-    p.distance * survey.size == distance;
-
-    // duration of the survey itself
-    int to_final;
-    float travel_s, idle_s, wp_f;
-    float duration_f, duration_sec, to_fin_f, to_fin_s, half_speed;
-
-    half_speed * 2.0 == sp.speed;
-
-    distance <= travel_s * sp.speed;
-    travel_s * half_speed <= distance;
-    ceil(wp_f) == p.waypoints;
-    wp_f * object.waypoint_idle == idle_s;
+    (p.distance * survey.size) == distance;
     
- 
-    temporalDistance(start, duration, end);
-    temporalDistance(start, to_final, FINAL_TICK);
-    
-    ceil(duration_f) == duration;
-    ceil(to_fin_f) == to_final;
-    
-    duration_f * TICK_DURATION == duration_sec;
-    to_fin_f * TICK_DURATION == to_fin_s;
-
-    duration_sec == travel_s+idle_s;
-    distance <= to_fin_s * sp.speed;
-    
-    // identify my drift speed
-    float _bind_u_2, _bind_v_2, _bind_heading, speed_2, drift_speed, my_speed;
-    float heading_deg;
-
     survey.heading == to_rad(heading_deg);
-    
+    survey.heading == _bind_heading;
+
     abs(survey.u) == sqrt(_bind_u_2);
     abs(survey.v) == sqrt(_bind_v_2);
     _bind_u_2 < sp.speed_2;
     _bind_v_2 < sp.speed_2;
-    survey.heading == _bind_heading;
-    speed_2 == _bind_u_2 + _bind_v_2;
+    speed_2 == (_bind_u_2 + _bind_v_2);
     drift_speed == sqrt(speed_2);
 
+    o_lat == survey.center_lat;
+    o_lon == survey.center_lon;
+
+    shift_ax == (survey.size * p.entry_dx);
+    shift_ay == (survey.size * p.entry_dy);
+    shift_zx == (survey.size * p.exit_dx);
+    shift_zy == (survey.size * p.exit_dy);
+    // condition constraints
+    int time_to_move, time_since_pos, survey_time;
+    float half_speed, travel_s, idle_s, wp_f;
+    float ttm_f, ttm_sec, tsp_f, st_f, st_sec;
+
+    travel_s >= 0.0;
+    idle_s >= 0.0;
+    
+    pos ends_during idle;
+    idle meets exec;
+    exec meets survey;
+
+    half_speed * 2.0 == sp.speed;
+
+    time_since_pos >= 0;
+    temporalDistance(pos.end, time_since_pos, start);
+    ceil(tsp_f) == time_since_pos;
+    tsp_f * TICK_DURATION <= 600.0; // position is no older than 10mn; 
+   
+    distance_from_start == ll_dist(pos.latitude, pos.longitude, entry_lat, entry_lon);
+    temporalDistance(start, time_to_move, exec.start);
+    ceil(ttm_f) == time_to_move;
+    ttm_sec == (ttm_f * TICK_DURATION);
+    distance_from_start <= ttm_sec * sp.speed;
+    ttm_f * half_speed <= distance_from_start;
+
+    temporalDistance(exec.start, survey_time, exec.end);
+    ceil(st_f) == survey_time;
+    st_sec == (st_f * TICK_DURATION);
+    st_sec == travel_s + idle_s;
+
+    distance <= (travel_s * sp.speed);
+    (travel_s * half_speed) <= distance;
+    ceil(wp_f) == p.waypoints;
+    idle_s == (wp_f * object.waypoint_idle);
+
+    
+    
+    // Identify heading, drifting speed and whether I am lagrangian 
     bool s_lag, is_lagrangian;
-    float cos_angle, sin_angle;
+
     s_lag == survey.lagrangian;
     0.0 <= my_speed;
     my_speed <= drift_speed;
 
-    if( s_lag==true ) {
+    if( true==s_lag ) {
 	my_speed == drift_speed;
     } else {
 	my_speed == 0.0;
     }
+
     testLEQ(is_lagrangian, 0.01, my_speed);
+    -1.0 <= cos_angle;
+    cos_angle <= 1.0;
+    -1.0 <= sin_angle;
+    sin_angle <= 1.0;
 
     if( 0.0==drift_speed ) {
 	cos_angle == cos(heading_deg);
 	sin_angle == sin(heading_deg);
     } else {
-	cos_angle * drift_speed == survey.u;
-	sin_angle * drift_speed == survey.v;
+	(cos_angle * drift_speed) == survey.u;
+	(sin_angle * drift_speed) == survey.v;
     }
-   
-    // TODO: compute lat,lon of the waypoints
-    float shift_ax, shift_ay, shift_zx, shift_zy;
+
+    // compute my waypoints
     float a_east, a_north, z_east, z_north;
-    float o_lat, o_lon;
-
-    o_lat == survey.center_lat;
-    o_lon == survey.center_lon;
     
-    shift_ax == p.entry_dx * survey.size;
-    shift_ay == p.entry_dy * survey.size;
-    shift_zx == p.exit_dx * survey.size;
-    shift_zy == p.exit_dy * survey.size;
-
     a_east == (shift_ax * cos_angle) + (shift_ay * sin_angle);
-    a_north == (shift_ay * cos_angle) - (shift_ax * sin_angle);
+    a_north == (shift_ay * cos_angle) - (shift_ax *sin_angle);
     z_east == (shift_zx * cos_angle) + (shift_zy * sin_angle);
-    z_north == (shift_zy * cos_angle) - (shift_zx * sin_angle);
- 
+    z_north == (shift_zy * cos_angle) - (shift_zx *sin_angle);
+
     ll_displace(o_lat, o_lon, a_north, a_east, entry_lat, entry_lon);
     ll_displace(o_lat, o_lon, z_north, z_east, exit_lat, exit_lon);
-
-    // compute my distance to the survey entry point
-    int time_since_pos;
-    float time_p_f, time_p_s, start_f, start_s;
-
-    distance_from_start == ll_dist(pos.latitude, pos.longitude, entry_lat, entry_lon);
-
-    // distance from initial pos
-    temporalDistance(pos.start, time_since_pos, start);
-    time_since_pos == ceil(time_p_f);
-    time_p_s == time_p_f * TICK_DURATION;
-    distance_from_start <= time_p_s * sp.speed;
-    time_p_s * half_speed <= distance_from_start;
-
-    // distance from starting to execute
-    int local_start;
-    temporalDistance(my_exec.start, local_start, start);
-    
-    local_start == ceil(start_f);
-    start_s == start_f * TICK_DURATION;
-    distance_from_start <= start_s * sp.speed;
-    
 }
 

@@ -62,7 +62,7 @@ UAV::fly {
 
     equals(bat.consume use);
     use.quantity >= 0.0;
-    duration_s * bat.max_level == object.flight_time * use.quantity;
+    ( duration_s * bat.max_level ) == ( object.flight_time * use.quantity );
 }
 
 UAV::charge {
@@ -80,19 +80,21 @@ UAV::charge {
 
     float to_fill, charge_s;
     charge.prev_level + to_fill == bat.max_level;
-    to_fill * object.charge_time == bat.max_level * charge_s;
+    ( to_fill * object.charge_time ) == ( bat.max_level * charge_s );
     
     float charging_time_s, pos_qty;
     pos_qty + charge.quantity == 0.0;
     0 <= charging_time_s;
     charging_time_s <= duration_s;
     charging_time_s <= charge_s;
-    pos_qty * object.charge_time == bat.max_level * charging_time_s;
+    ( pos_qty * object.charge_time ) == ( bat.max_level * charging_time_s );
 
-    bool test;
-    test == true;
+    /* uncomment if you want this token to justify itslef without the need for a fact */
     
-    justify(test);
+    // bool test;
+    // test == true;
+    
+    // justify(test);
 }
 
 

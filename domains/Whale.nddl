@@ -78,7 +78,9 @@ class Whale {
 Whale::locate {
     // conditions:
     starts_during(condition europtus.execute);
-    ends(condition UAV.charge prep);
+    // setting this as a condition will make
+    // this action block until prep is justified
+    ends(UAV.charge prep);
     // effects
     starts(effect Neptus.Message msg);
     before(effect WhalePos.Position spot);
@@ -113,7 +115,7 @@ Whale::locate {
 Whale::track {
     starts_during(condition europtus.execute);
     met_by(condition WhalePos.Position last_pos);
-    contains(condition DrifterFollow.Survey  survey_a);
+    contains(condition DrifterFollow.Survey survey_a);
     contains(condition DrifterFollow.Survey survey_b);
     
     contained_by(effect WhaleFollow.Active active);
@@ -162,6 +164,10 @@ Whale::track {
     exec_b meets survey_b;    
     starts_during(condition b.Inactive idle_b);
     idle_b meets exec_b;
+
+    //TODO compute scale_inner based on the wait on waypoints
+    
+    
 }
 
 
