@@ -446,6 +446,9 @@ size_t dispatch_manager::do_dispatch(eu::eint date) {
                   for(eu::TokenSet::const_iterator s=slaves.begin(); slaves.end()!=s; ++s) {
                     if( is_condition(*s) && !justified(*s) ) {
                       guarded = true;
+                      me->log("GUARD")<<"guard["<<i->first->getName().toString()<<'('
+                      <<i->first->getKey()<<")] = "<<(*s)->getName().toString()<<'('
+                      <<(*s)->getKey()<<')';
                       break;
                     }
                   }
@@ -456,6 +459,9 @@ size_t dispatch_manager::do_dispatch(eu::eint date) {
                   trigger = true;
                   break;
                 }
+              } else {
+                me->log("GUARD")<<"guard["<<i->first->getName().toString()<<'('
+                <<i->first->getKey()<<")] = "<<date<<" < start";
               }
             }
           }
