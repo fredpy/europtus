@@ -463,10 +463,10 @@ void assembly::pimpl::do_step() {
           oss<<"Decisions left: "<<decisions.size();
           if( decisions.size()<unfilt_size )
             oss<<"("<<unfilt_size<<")";
-          oss<<"\n   - (steps = "<<(m_solver->getStepCount()+m_lost)
-            <<", depth = "<<m_solver->getDepth()<<")";
+          oss<<"\n   - (steps="<<(m_solver->getStepCount()+m_lost)
+            <<", depth="<<m_solver->getDepth()<<")";
           
-          bool verbose = true;
+          bool verbose = false;
           
           if( !verbose ) {
             if( !decisions.empty() ) {
