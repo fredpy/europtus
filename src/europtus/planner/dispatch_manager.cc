@@ -394,6 +394,8 @@ size_t dispatch_manager::postponable(eu::eint date, eu::TokenSet &postpone) {
       } else if( !(*s)->isInactive() ) {
         eu::TokenSet actions;
         effect_for(*s, actions);
+        me->log("GUARD")<<"["<<(*s)->getName().toString()
+          <<'('<<(*s)->getKey()<<")]= !singletons";
         
         for(eu::TokenSet::const_iterator a=actions.begin(); actions.end()!=a; ++a) {
           eu::Domain const &dom =  (*a)->start()->lastDomain();
