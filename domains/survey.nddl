@@ -36,8 +36,8 @@
 // Model instanciation
 
 // Define the lagrangian paths we use in an abstract form
-TrexPath square = new TrexPath(4.0, -0.5, 0.5, 4);
-TrexPath square_twice = new TrexPath(8.0, -0.5, 0.5, 8);
+TrexPath square = new TrexPath(4.0, -0.5, 0.5, 5);
+TrexPath square_twice = new TrexPath(8.0, -0.5, 0.5, 9);
 survey_pair two_squares = new survey_pair(square, square_twice);
 
 // vehicle timelines

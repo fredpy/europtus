@@ -25,7 +25,7 @@ class WhalePos extends Timeline {
 class WhaleFollow extends Timeline {
       predicate Inactive {}
       predicate Active {
-	  float       scale, scale_inner;
+	  float       scale;
 	  float       heading;
 	  survey_pair surveys;
       }
@@ -46,7 +46,6 @@ WhaleFollow::Active {
     outter == surveys.ref;
     inner == surveys.inner;
 
-    scale_inner * inner.distance == scale * outter.distance;
     met_by(Inactive idle);
 }
 
@@ -143,9 +142,13 @@ Whale::track {
     survey_a.center_lat == last_pos.latitude;
     survey_a.center_lon == last_pos.longitude;
     temporalDistance(survey_a.end, end_a, end);
+
+    float scale_inner;
+    active.scale > 0.0;
+    scale_inner > 0.0;
     
     survey_b.path == surveys.inner;
-    survey_b.size == active.scale_inner;
+    survey_b.size == scale_inner;
     survey_b.lagrangian == false;
     survey_b.heading == heading;
     survey_b.center_lat == last_pos.latitude;
@@ -165,9 +168,35 @@ Whale::track {
     starts_during(condition b.Inactive idle_b);
     idle_b meets exec_b;
 
-    //TODO compute scale_inner based on the wait on waypoints
-    
-    
+    TrexPath path_a, path_b;
+    AUV auv_a, auv_b;
+
+    auv_a.drifter == a;
+    path_a == survey_a.path;
+    auv_b.drifter == b;
+    path_b == survey_b.path;
+
+    contained_by(SpeedControl.Holds speed_a);
+    speed_a.object == auv_a.speed;
+    contained_by(SpeedControl.Holds speed_b);
+    speed_b.object == auv_b.speed;
+
+    float distance_a, travel_a, wait_a, wp_a, distance_b, travel_b, wait_b, wp_b;
+
+    // compute timing approximate for a
+    distance_a == (path_a.distance * active.scale);
+    (travel_a * speed_a.speed) == distance_a;
+    wp_a == path_a.waypoints;
+    wait_a == (wp_a * auv_a.waypoint_idle);
+
+    // compute timeinig apporximate for b
+    distance_b == (path_b.distance * scale_inner);
+    (travel_b * speed_b.speed) == distance_b;
+    wp_b == path_b.waypoints;
+    wait_b == (wp_b * auv_b.waypoint_idle);
+
+    // make it so that these 2 estimates are equal
+    (travel_a + wait_a) == (travel_b + wait_b);
 }
 
 
