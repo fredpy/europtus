@@ -39,6 +39,8 @@
 
 # include <boost/asio/strand.hpp>
 # include <europtus/clock.hh>
+# include <boost/asio/deadline_timer.hpp>
+
 
 
 namespace europtus {
@@ -97,6 +99,8 @@ namespace europtus {
       void async_poll(clock::tick_type date);
       void async_request(TREX::transaction::goal_id g);
       
+      void timer_event(boost::system::error_code const &ec);
+      void async_announce();
       
       boost::asio::strand         m_strand;
       bool                        m_polling;
@@ -109,6 +113,9 @@ namespace europtus {
       
       token_event                 m_tok_sig;
       clock::tick_type            m_date;
+    
+      UNIQ_PTR<IMC::Announce>     m_announce;
+      boost::asio::deadline_timer m_timer;
     }; // class europtus::dune::imc_client
     
   } // europtus::dune

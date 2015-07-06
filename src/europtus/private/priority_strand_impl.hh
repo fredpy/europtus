@@ -70,7 +70,7 @@ namespace europtus {
       bool operator()(task_ref a, task_ref b) const;
     };
     typedef std::priority_queue<task_ref, std::vector<task_ref>,
-    task_cmp> task_queue;
+                                task_cmp> task_queue;
     
     boost::shared_ptr<boost::asio::strand> m_strand;
     mutable boost::shared_mutex     m_mutex;

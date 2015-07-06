@@ -181,7 +181,7 @@ int main(int argc, char *argv[]) {
   size_t threads=2;
   // tick frequency info (1 second by default)
   unsigned long long hours=0, minutes=0, seconds=1, millis=0;
-  unsigned imc_port=7030, imc_id=65432, neptus_port=0;
+  unsigned imc_port=7030, imc_id=24575, neptus_port=0;
   std::string neptus_ip;
   
   std::string europa_dbg_cfg("Debug.cfg"), europa_solver("PlannerConfig.xml"), log_file("europtus.log");

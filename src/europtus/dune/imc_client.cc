@@ -35,6 +35,8 @@
 #include "europtus/date_handler.hh"
 
 #include <boost/signals2/shared_connection_block.hpp>
+#include <boost/asio/ip/tcp.hpp>
+
 
 using namespace europtus::dune;
 namespace tlog=TREX::utils::log;
@@ -42,6 +44,8 @@ namespace tu=TREX::utils;
 namespace tr=TREX::transaction;
 
 namespace asio=boost::asio;
+namespace ip=asio::ip;
+
 namespace bs=boost::system;
 namespace sig2=boost::signals2;
 namespace bpt=boost::property_tree;
@@ -107,7 +111,8 @@ namespace {
 // structors
 
 imc_client::imc_client(tlog::text_log &out)
-:m_strand(out.service()), m_polling(false), m_log(out) {}
+:m_strand(out.service()), m_polling(false), m_log(out),
+m_timer(out.service()) {}
 
 imc_client::~imc_client() {
   stop_imc();
@@ -159,6 +164,15 @@ void imc_client::start_imc(int id, int port, std::string const &neptus_ip, int n
     log(tlog::info)<<"Listening to IMC using port "<<port;
     std::cout<<"Bound to port "<<port<<std::endl;
   }
+  m_announce.reset(new IMC::Announce());
+  m_announce->sys_name = "Europtus";
+  m_announce->sys_type = 0; // CCU
+  m_announce->owner = 0xFFFF;
+  // if I find a way to determine my IP ... which is not easy at all
+  //m_addapter.service = "imc+udp://"+ip+":"+port+"/"
+
+  async_announce();
+    
   m_conn = clk.on_tick().connect_extended(boost::bind(&imc_client::on_tick,
                                                       this, _1, _2, _3));
 }
@@ -203,13 +217,16 @@ void imc_client::on_tick(imc_client::conn const &c,
                          europtus::clock::tick_type tick) {
   sig2::shared_connection_block lock(c);
   
-  if( m_conn!=c )
+  if( m_conn!=c ) {
     c.disconnect(); // in case we connect to more than one clock
                     // we just keep the one attached to this class
-  else if( !m_polling ) {
-    // we need to reinitiate poll
-    m_polling = true;
-    m_strand.post(boost::bind(&imc_client::async_poll, this, tick));
+  }
+  else {
+    if( !m_polling ) {
+      // we need to reinitiate poll
+      m_polling = true;
+      m_strand.post(boost::bind(&imc_client::async_poll, this, tick));
+    }
   }
 }
 
@@ -261,5 +278,25 @@ void imc_client::async_poll(clock::tick_type date) {
     }
   }
 }
+
+void imc_client::timer_event(boost::system::error_code const &ec) {
+  if( !ec ) {
+    m_strand.post(boost::bind(&imc_client::async_announce, this));
+  } else
+    log("timer")<<ec<<": "<<ec.message()<<" ("<<boost::asio::error::operation_aborted<<")";
+}
+
+void imc_client::async_announce() {
+  IMC::Announce *ann = m_announce.get();
+  if( NULL!=ann ) {
+    m_adapter.send(ann, m_neptus_ip, m_neptus_port);
+    log("imc")<<"Sent announce";
+    m_timer.expires_from_now(boost::posix_time::seconds(10));
+    m_timer.async_wait(boost::bind(&imc_client::timer_event, this, _1));
+  }
+}
+
+
+
 
 

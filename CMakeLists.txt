@@ -85,6 +85,7 @@ include_directories(
 
 add_definitions(${trex_CPPFLAGS})
 
+set(IMC_ID 10 CACHE STRING "IMC Id used")
 set(NEPTUS_IP "" CACHE STRING "Default IP address for Neptus")
 set(NEPTUS_PORT 0 CACHE STRING "Default port for Neptus")
 

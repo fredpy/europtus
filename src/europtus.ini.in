@@ -1,4 +1,5 @@
 # neptus/dune related
+id_imc=@IMC_ID@ 
 neptus_ip=@NEPTUS_IP@
 neptus_port=@NEPTUS_PORT@
 
