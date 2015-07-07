@@ -205,7 +205,8 @@ void imc_client::async_request(TREX::transaction::goal_id g) {
     m_adapter.asImcMessage(m_date, *g, &tok);
     op.token.set(&tok);
     op.op = imc::TrexOperation::OP_POST_GOAL;
-    
+    // Set time stamp based on dune time
+    op.setTimeStamp(DUNE::Time::Clock::getSinceEpoch());
     
     if( m_neptus_port!=0 && !m_neptus_ip.empty() ) {
       Goal tmp = m_adapter.genericGoal(&tok);
@@ -297,6 +298,9 @@ void imc_client::timer_event(boost::system::error_code const &ec) {
 void imc_client::async_announce() {
   IMC::Announce *ann = m_announce.get();
   if( NULL!=ann ) {
+    // Set time stamp based on dune time
+    ann->setTimeStamp(DUNE::Time::Clock::getSinceEpoch());
+
     m_adapter.send(ann, m_neptus_ip, m_neptus_port);
     log("imc")<<"Sent announce";
     m_timer.expires_from_now(boost::posix_time::seconds(10));
