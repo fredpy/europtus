@@ -54,7 +54,7 @@ namespace imc=DUNE::IMC;
 namespace {
   class clock_proxy :public TREX::LSTS::ImcAdapter::tick_proxy {
   public:
-    clock_proxy(europtus::clock &c):m_clk(c) {
+    clock_proxy(europtus::clock &c, tlog::text_log &l):m_clk(c), m_log(l) {
     }
     ~clock_proxy() {}
     
@@ -96,9 +96,13 @@ namespace {
       
       return static_cast<tick_type>(std::floor(value));
     }
+    tlog::stream log(tu::Symbol const &kind) {
+      return m_log("imc", kind);
+    }
 
   private:
     europtus::clock &m_clk;
+    tlog::text_log  &m_log;
     
   };
 }
@@ -156,7 +160,7 @@ void imc_client::start_imc(int id, int port, std::string const &neptus_ip, int n
   m_neptus_ip = neptus_ip;
   m_neptus_port = neptus_port;
   m_adapter.setTrexId(id);
-  m_adapter.set_proxy(new clock_proxy(clk));
+  m_adapter.set_proxy(new clock_proxy(clk, m_log));
   if( !m_adapter.bind(port) ) {
     log(tlog::error)<<"Failed to bind to port "<<port;
     std::cerr<<"Bind failure to "<<port<<std::endl;
