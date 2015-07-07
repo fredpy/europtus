@@ -114,7 +114,7 @@ namespace europtus {
       token_event                 m_tok_sig;
       clock::tick_type            m_date;
     
-      UNIQ_PTR<IMC::Announce>     m_announce;
+      UNIQ_PTR<DUNE::IMC::Announce>     m_announce;
       boost::asio::deadline_timer m_timer;
     }; // class europtus::dune::imc_client
     

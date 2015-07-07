@@ -95,7 +95,6 @@ namespace {
       std::cout<<oss.str()<<msg->content()<<std::endl;
     }
   }
-  
 
 }
 
@@ -112,7 +111,6 @@ namespace boost {
     bool full = true;
     
     typedef boost::posix_time::time_input_facet facet;
-    
     
     std::istringstream iss(s);
     
@@ -148,7 +146,6 @@ namespace boost {
       }
     }
     
-    
     if( !full && date<=today )
       // handle the case where the time specified
       // is obvioulsy tomorrow
@@ -168,7 +165,6 @@ namespace boost {
     
     v = boost::posix_time::duration_from_string(s);
   }
-  
   
 }
 
@@ -329,7 +325,6 @@ int main(int argc, char *argv[]) {
   } else {
     model = opt_val["nddl"].as<std::string>();
   }
-  
   
   if( opt_val.count("daemon") ) {
     pid_t pid = fork();

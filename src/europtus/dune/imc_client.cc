@@ -170,9 +170,8 @@ void imc_client::start_imc(int id, int port, std::string const &neptus_ip, int n
   m_announce->owner = 0xFFFF;
   // if I find a way to determine my IP ... which is not easy at all
   //m_addapter.service = "imc+udp://"+ip+":"+port+"/"
-
-  async_announce();
-    
+  m_strand.post(boost::bind(&imc_client::async_announce, this));
+  
   m_conn = clk.on_tick().connect_extended(boost::bind(&imc_client::on_tick,
                                                       this, _1, _2, _3));
 }
@@ -180,6 +179,7 @@ void imc_client::start_imc(int id, int port, std::string const &neptus_ip, int n
 void imc_client::stop_imc() {
   m_polling = false;
   m_conn.disconnect();
+  m_timer.cancel();
   m_adapter.unbind();
 }
 
