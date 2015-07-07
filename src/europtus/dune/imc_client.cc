@@ -166,7 +166,7 @@ void imc_client::start_imc(int id, int port, std::string const &neptus_ip, int n
   }
   m_announce.reset(new IMC::Announce());
   m_announce->sys_name = "Europtus";
-  m_announce->sys_type = 0; // CCU
+  m_announce->sys_type = SYSTEMTYPE_CCU; // CCU
   m_announce->owner = 0xFFFF;
   // if I find a way to determine my IP ... which is not easy at all
   //m_addapter.service = "imc+udp://"+ip+":"+port+"/"
@@ -202,7 +202,11 @@ void imc_client::async_request(TREX::transaction::goal_id g) {
     op.token.set(&tok);
     op.op = imc::TrexOperation::OP_POST_GOAL;
     
+    
     if( m_neptus_port!=0 && !m_neptus_ip.empty() ) {
+      Goal tmp = m_adapter.genericGoal(&tok);
+      log()<<'['<<op.goal_id<<"] "<<tmp;
+      
       if( m_adapter.send(&op, m_neptus_ip, m_neptus_port) )
         op.toText(log("neptus")<<"sent to "<<m_neptus_ip<<':'<<m_neptus_port<<"\n");
       else
