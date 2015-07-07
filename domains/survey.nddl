@@ -77,7 +77,7 @@ init.current_level == 100.0;
 // request to be active
 rejectable(WhaleFollow.Active follow);
 follow.surveys.specify(two_squares);
-follow.scale.specify(800.0);
+follow.scale.specify(400.0);
 
 
 

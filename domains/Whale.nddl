@@ -22,8 +22,27 @@ class WhalePos extends Timeline {
     }
 }
 
+class SurveyIter extends Timeline {
+    predicate Inactive {}
+
+    predicate Iter {
+	float scale;
+	float heading;
+	survey_pair surveys;
+	int count;
+
+	count >= 0;
+    }
+
+    SurveyIter() {}
+}
+
+
+
 class WhaleFollow extends Timeline {
-      predicate Inactive {}
+    SurveyIter iterator;
+    
+     predicate Inactive {}
       predicate Active {
 	  float       scale;
 	  float       heading;
@@ -31,7 +50,14 @@ class WhaleFollow extends Timeline {
       }
 
 
-      WhaleFollow() {}
+      WhaleFollow() {
+	  iterator = new SurveyIter();
+      }
+}
+
+WhaleFollow::Inactive {
+    equals(SurveyIter.Inactive idle);
+    idle.object == object.iterator;
 }
 
 WhaleFollow::Active {
@@ -47,8 +73,20 @@ WhaleFollow::Active {
     inner == surveys.inner;
 
     met_by(Inactive idle);
+    starts(SurveyIter.Iter first);
+    first.count == 0;
+    first.object == object.iterator;
 }
 
+SurveyIter::Iter {
+    WhaleFollow me;
+    me.iterator == object;
+    contained_by(WhaleFollow.Active active);
+    active.object == me;
+    active.scale == scale;
+    active.heading == heading;
+    active.surveys == surveys;
+}
 
 class Whale {
     WhaleFollow survey;
@@ -117,16 +155,19 @@ Whale::track {
     contains(condition DrifterFollow.Survey survey_a);
     contains(condition DrifterFollow.Survey survey_b);
     
-    contained_by(effect WhaleFollow.Active active);
+    contained_by(effect SurveyIter.Iter active);
 
     DrifterFollow a, b;
+    WhaleFollow my_whale;
+
+    my_whale == object.survey;
     
     // constraint on objects
     a != b;
     survey_a.object == a;
     survey_b.object == b;
     last_pos.object == object.estate;
-    active.object == object.survey;
+    active.object == my_whale.iterator;
 
     // constraint on effects
     active.surveys == surveys;
