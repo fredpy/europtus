@@ -160,6 +160,7 @@ void imc_client::start_imc(int id, int port, std::string const &neptus_ip, int n
   m_neptus_ip = neptus_ip;
   m_neptus_port = neptus_port;
   m_adapter.setTrexId(id);
+  m_adapter.setPlatformId(id);
   m_adapter.set_proxy(new clock_proxy(clk, m_log));
   if( !m_adapter.bind(port) ) {
     log(tlog::error)<<"Failed to bind to port "<<port;
@@ -171,6 +172,7 @@ void imc_client::start_imc(int id, int port, std::string const &neptus_ip, int n
   m_announce.reset(new IMC::Announce());
   m_announce->sys_name = "Europtus";
   m_announce->sys_type = SYSTEMTYPE_CCU; // CCU
+
   m_announce->owner = 0xFFFF;
   // if I find a way to determine my IP ... which is not easy at all
   //m_addapter.service = "imc+udp://"+ip+":"+port+"/"
