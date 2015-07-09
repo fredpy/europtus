@@ -77,17 +77,11 @@ init.current_level == 100.0;
 // request to be active
 rejectable(WhaleFollow.Active follow);
 follow.surveys.specify(two_squares);
-follow.scale.specify(400.0);
+follow.scale.specify(800.0);
+//follow.total >= 4;
 
 
-
-// rejectable(DrifterFollow.Survey survey);
-// precedes(0, survey.start);
-// precedes(survey.start, FINAL_TICK);
-
-// survey.center_lat.specify(0.6658485111);
-// survey.center_lon.specify(-0.4966177319);
-// survey.heading.specify(0.0);
-// survey.lagrangian.specify(true);
-// survey.path.specify(square);
-// survey.size.specify(600.0);
+// set final tick to its largest value
+int _bind_final;
+_bind_final > 0;
+_bind_final <= FINAL_TICK;
