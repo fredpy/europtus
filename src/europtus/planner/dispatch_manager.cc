@@ -424,7 +424,7 @@ size_t dispatch_manager::postponable(eu::eint date, eu::TokenSet &postpone) {
             
             for(eu::TokenSet::const_iterator sl=slaves.begin(); slaves.end()!=sl; ++sl) {
               if( is_condition(*sl) && !justified(*sl) ) {
-                disp_token(disp_token(me->log("GUARD")<<"guard[", *s)<<"] = ",*sl);
+                disp_token(disp_token(me->log("GUARD")<<"[", *s)<<"] = ",*sl);
               }
             }
            
@@ -482,7 +482,7 @@ size_t dispatch_manager::do_dispatch(eu::eint date) {
                   for(eu::TokenSet::const_iterator s=slaves.begin(); slaves.end()!=s; ++s) {
                     if( is_condition(*s) && !justified(*s) ) {
                       guarded = true;
-                      disp_token(disp_token(me->log("GUARD")<<"guard[",i->first)<<"] = ", *s);
+                      disp_token(disp_token(me->log("GUARD")<<"[",i->first)<<"] = ", *s);
                     }
                   }
                 }
@@ -493,7 +493,7 @@ size_t dispatch_manager::do_dispatch(eu::eint date) {
                   break;
                 }
               } else {
-                disp_token(me->log("GUARD")<<"guard[", i->first)<<"] = "<<date<<" < start="
+                disp_token(me->log("GUARD")<<"[", i->first)<<"] = "<<date<<" < start="
                   <<i->first->start()->lastDomain().toString();
               }
             }
