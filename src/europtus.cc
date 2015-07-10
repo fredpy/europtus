@@ -348,6 +348,7 @@ int main(int argc, char *argv[]) {
           std::ostringstream oss;
           oss<<"Failed to move europtus.log (attempts exceed "<<FILE_ATTEMPTS<<").";
           throw std::runtime_error(oss.str());
+        }
       }
     }
   }
