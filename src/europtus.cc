@@ -48,6 +48,8 @@
 // just ofr testing purpose
 #include "europtus/planner/europa_protect.hh"
 
+#define FILE_ATTEMPTS 4096
+
 namespace tlog=TREX::utils::log;
 namespace tr=TREX::transaction;
 namespace po=boost::program_options;
@@ -332,14 +334,20 @@ int main(int argc, char *argv[]) {
     boost::filesystem::path file(log_file);
     
     if( boost::filesystem::exists(file) ) {
-      for(size_t count=1; count<4096; ++count) {
+      bool moved = false;
+      for(size_t count=1; count<=FILE_ATTEMPTS; ++count) {
         std::ostringstream oss;
         oss<<log_file<<'.'<<count;
         if( !boost::filesystem::exists(oss.str()) ) {
           std::cout<<"Moving "<<log_file<<" to "<<oss.str()<<std::endl;
           boost::filesystem::rename(log_file, oss.str());
+          moved = true;
           break;
         }
+        if( !moved ) {
+          std::ostringstream oss;
+          oss<<"Failed to move europtus.log (attempts exceed "<<FILE_ATTEMPTS<<").";
+          throw std::runtime_error(oss.str());
       }
     }
   }
