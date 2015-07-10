@@ -376,6 +376,22 @@ void dispatch_manager::remove_guarded(eu::TokenId const &tok) {
   m_guarded.erase(tok);
 }
 
+namespace {
+  std::ostream &disp_token(std::ostream &out, eu::TokenId tok) {
+    if( tok->isMerged() )
+      tok = tok->getActiveToken();
+    
+    eu::ObjectDomain const &dom = tok->getObject()->lastDomain();
+
+    if( dom.isSingleton() ) {
+      eu::ObjectId obj = dom.makeObjectList().front();
+      out<<obj->getName().toString()<<'.'<<tok->getUnqualifiedPredicateName().toString();
+    } else
+      out<<tok->getPredicateName().toString();
+    return out<<'('<<tok->getKey()<<')';
+  }
+}
+
 
 // manipulators
 
@@ -388,14 +404,17 @@ size_t dispatch_manager::postponable(eu::eint date, eu::TokenSet &postpone) {
   
     // check all the tokends which are still self-guarded
     for(eu::TokenSet::const_iterator s=m_schedulled.begin(); m_schedulled.end()!=s; ++s) {
+      eu::ObjectDomain const &dom = (*s)->getObject()->lastDomain();
+      eu::ObjectId obj = dom.makeObjectList().front();
+      tu::Symbol o_name(obj->getName().toString());
+      
       if( is_fact(*s) ) {
         if( m_resolved.insert(*s).second )
           assembly::pimpl::print_token(me->log(s_disp)<<"schedulled->fact ", **s);
       } else if( !(*s)->isInactive() ) {
         eu::TokenSet actions;
         effect_for(*s, actions);
-        me->log("GUARD")<<"["<<(*s)->getName().toString()
-          <<'('<<(*s)->getKey()<<")]= !singletons";
+        disp_token(me->log("GUARD")<<"[", *s)<<"]= !singletons";
         
         
         for(eu::TokenSet::const_iterator a=actions.begin(); actions.end()!=a; ++a) {
@@ -405,9 +424,7 @@ size_t dispatch_manager::postponable(eu::eint date, eu::TokenSet &postpone) {
             
             for(eu::TokenSet::const_iterator sl=slaves.begin(); slaves.end()!=sl; ++sl) {
               if( is_condition(*sl) && !justified(*sl) ) {
-                me->log("GUARD")<<"guard["<<(*s)->getName().toString()<<'('
-                <<(*s)->getKey()<<")] = "<<(*sl)->getName().toString()<<'('
-                <<(*sl)->getKey()<<')';
+                disp_token(disp_token(me->log("GUARD")<<"guard[", *s)<<"] = ",*sl);
               }
             }
            
@@ -465,9 +482,7 @@ size_t dispatch_manager::do_dispatch(eu::eint date) {
                   for(eu::TokenSet::const_iterator s=slaves.begin(); slaves.end()!=s; ++s) {
                     if( is_condition(*s) && !justified(*s) ) {
                       guarded = true;
-                      me->log("GUARD")<<"guard["<<i->first->getName().toString()<<'('
-                      <<i->first->getKey()<<")] = "<<(*s)->getName().toString()<<'('
-                      <<(*s)->getKey()<<')';
+                      disp_token(disp_token(me->log("GUARD")<<"guard[",i->first)<<"] = ", *s);
                     }
                   }
                 }
@@ -478,8 +493,8 @@ size_t dispatch_manager::do_dispatch(eu::eint date) {
                   break;
                 }
               } else {
-                me->log("GUARD")<<"guard["<<i->first->getName().toString()<<'('
-                <<i->first->getKey()<<")] = "<<date<<" < start";
+                disp_token(me->log("GUARD")<<"guard[", i->first)<<"] = "<<date<<" < start="
+                  <<i->first->start()->lastDomain().toString();
               }
             }
           }
