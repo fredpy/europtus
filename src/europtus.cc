@@ -180,7 +180,7 @@ int main(int argc, char *argv[]) {
   unsigned imc_port=7030, imc_id=24575, neptus_port=0;
   std::string neptus_ip;
   
-  std::string europa_dbg_cfg("Debug.cfg"), europa_solver("PlannerConfig.xml"), log_file("europtus.log");
+  std::string europa_dbg_cfg("Debug.cfg"), europa_solver("PlannerConfig.xml"), log_file;
   
   // default end date (default largest possible date)
   boost::posix_time::ptime final(boost::posix_time::max_date_time);
@@ -229,7 +229,7 @@ int main(int argc, char *argv[]) {
      "All europa log outputs from this file will be in europa_dbg.log")
     ("solver_cfg", po::value<std::string>(&europa_solver)->implicit_value(europa_solver)->value_name("<file>"),
      "Load europa solver configuration from <file>")
-    ("log", po::value<std::string>(&log_file)->implicit_value(log_file)->value_name("<file>"),
+    ("log", po::value<std::string>(&log_file)->value_name("<file>"),
      "write log messages in <file>")
     ("out", "Additionally print log messages in standard output")
     ("end_date", po::value<boost::posix_time::ptime>()->value_name("<date>"),
@@ -326,6 +326,26 @@ int main(int argc, char *argv[]) {
     model = opt_val["nddl"].as<std::string>();
   }
   
+  if( log_file.empty() ) {
+    // Need to identify the new file name
+    log_file = "europtus.log";
+    boost::filesystem::path file(log_file);
+    
+    if( boost::filesystem::exists(file) ) {
+      for(size_t count=1; count<4096; ++count) {
+        std::ostringstream oss;
+        oss<<log_file<<'.'<<count;
+        if( !boost::filesystem::exists(oss.str()) ) {
+          std::cout<<"Moving "<<log_file<<" to "<<oss.str()<<std::endl;
+          boost::filesystem::rename(log_file, oss.str());
+          break;
+        }
+      }
+    }
+  }
+
+  
+  
   if( opt_val.count("daemon") ) {
     pid_t pid = fork();
     if( pid<0 ) {
@@ -340,6 +360,7 @@ int main(int argc, char *argv[]) {
     // I am the child and need to detach myself
     setsid();
     umask(0);
+    
     
     // fork another time to ensure that I won;t acquire a terminal
     if( (pid=fork()) ) {
