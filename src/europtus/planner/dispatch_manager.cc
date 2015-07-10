@@ -397,8 +397,25 @@ size_t dispatch_manager::postponable(eu::eint date, eu::TokenSet &postpone) {
         me->log("GUARD")<<"["<<(*s)->getName().toString()
           <<'('<<(*s)->getKey()<<")]= !singletons";
         
+        
         for(eu::TokenSet::const_iterator a=actions.begin(); actions.end()!=a; ++a) {
+          // First check if there are further guards
+          if( !justified(*a) ) {
+            eu::TokenSet const &slaves = (*a)->slaves();
+            
+            for(eu::TokenSet::const_iterator sl=slaves.begin(); slaves.end()!=sl; ++sl) {
+              if( is_condition(*sl) && !justified(*sl) ) {
+                me->log("GUARD")<<"guard["<<(*s)->getName().toString()<<'('
+                <<(*s)->getKey()<<")] = "<<(*sl)->getName().toString()<<'('
+                <<(*sl)->getKey()<<')';
+              }
+            }
+           
+          }
+          
+          
           eu::Domain const &dom =  (*a)->start()->lastDomain();
+          
           if( dom.isMember(date) && dom.isMember(date+1) ) {
             if( postpone.insert(*a).second )
               ++count;
@@ -451,7 +468,6 @@ size_t dispatch_manager::do_dispatch(eu::eint date) {
                       me->log("GUARD")<<"guard["<<i->first->getName().toString()<<'('
                       <<i->first->getKey()<<")] = "<<(*s)->getName().toString()<<'('
                       <<(*s)->getKey()<<')';
-                      break;
                     }
                   }
                 }
