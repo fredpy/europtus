@@ -103,6 +103,7 @@ add_executable(europtus
   src/europtus/asio_pool.cc
   src/europtus/clock.cc
   src/europtus/date_handler.cc
+  src/europtus/log_player.cc
   src/europtus/priority_strand.cc
   src/europtus/version.cc
   src/europtus/dune/clock.cc
@@ -128,6 +129,7 @@ add_executable(europtus
   include/europtus/asio_pool.hh
   include/europtus/clock.hh
   include/europtus/date_handler.hh
+  include/europtus/log_player.hh
   include/europtus/priority_strand.hh
   include/europtus/rt_clock.hh
   include/europtus/tick_clock.hh

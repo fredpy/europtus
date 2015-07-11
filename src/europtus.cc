@@ -39,6 +39,7 @@
 
 
 #include "europtus/asio_pool.hh"
+#include "europtus/log_player.hh"
 #include "europtus/dune/clock.hh"
 #include "europtus/dune/imc_client.hh"
 #include "europtus/version.hh"
@@ -96,6 +97,10 @@ namespace {
         oss.put(' ');
       std::cout<<oss.str()<<msg->content()<<std::endl;
     }
+  }
+  
+  void on_obs(europtus::planner::assembly &a, TREX::transaction::goal_id g) {
+    a.observation(g);
   }
 
 }
@@ -242,7 +247,8 @@ int main(int argc, char *argv[]) {
      "Mission max duration\n"
      "If both duration and end_date are specified the shortest is taken")
     ("daemon", "run as a daemon")
-    ("test", "Enable injection of test observation")
+    ("test", po::value<std::string>()->value_name("<xml_file>"),
+     "Enable injection of test observation from <xml_file>")
     ("help", "Produce this help message")
     ("version,v", "Print version number");
   
@@ -450,6 +456,17 @@ int main(int argc, char *argv[]) {
     europa.load_nddl(model);
     // At most 120 ticks
     europa.set_plan_to(120);
+    europtus::log_player logf;
+    
+    if( opt_val.count("test") ) {
+      std::string file = opt_val["test"].as<std::string>();
+      logf.load(file);
+      if( !logf.empty() ) {
+        logf.on_obs().connect(boost::bind(on_obs, boost::ref(europa), _1));
+        clock.on_tick().connect(boost::bind(&europtus::log_player::tick, &logf, _1, _2));
+      }
+    }
+    
     
     clock.start();
     
@@ -482,49 +499,7 @@ int main(int argc, char *argv[]) {
     clock.tick();
     while( clock.active() ) {
       clock.sleep();
-      cur = clock.tick();
-      
-      if( opt_val.count("test") ) {
-        tr::goal_id g;
-        
-        if( cur==3 ) {
-          g = MAKE_SHARED<tr::Goal>("auv2.drifter", "Inactive");
-          g->restrictStart(tr::IntegerDomain(-10));
-        }
-        if( cur==4 ) {
-          g = MAKE_SHARED<tr::Goal>("auv1.drifter", "Inactive");
-          g->restrictStart(tr::IntegerDomain(2));
-        }
-        
-        if( cur==6 ) {
-          g = MAKE_SHARED<tr::Goal>("auv1.estate", "Position");
-          g->restrictStart(tr::IntegerDomain(4));
-          g->restrictAttribute(tr::Variable("latitude",
-                                            tr::FloatDomain(0.6658486111)));
-          g->restrictAttribute(tr::Variable("longitude",
-                                            tr::FloatDomain(-0.4966177319)));
-        }
-        if( cur==8 ) {
-          g = MAKE_SHARED<tr::Goal>("auv2.estate", "Position");
-          g->restrictStart(tr::IntegerDomain(0));
-          g->restrictAttribute(tr::Variable("latitude",
-                                            tr::FloatDomain(0.6658486411)));
-          g->restrictAttribute(tr::Variable("longitude",
-                                            tr::FloatDomain(-0.496617732)));
-        }
-        
-        if( cur==16 ) {
-          g = MAKE_SHARED<tr::Goal>("whale.estate", "Position");
-          g->restrictStart(tr::IntegerDomain(13));
-          g->restrictAttribute(tr::Variable("latitude",
-                                            tr::FloatDomain(0.6658485111)));
-          g->restrictAttribute(tr::Variable("longitude",
-                                            tr::FloatDomain(-0.4966177319)));
-        }
-          
-        if( g )
-          europa.observation(g);
-      }
+      cur = clock.tick();      
     }
     // Not necessary as destruction does it but always better
     // to leave clean
