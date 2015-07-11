@@ -102,6 +102,10 @@ namespace {
   void on_obs(europtus::planner::assembly &a, TREX::transaction::goal_id g) {
     a.observation(g);
   }
+  
+  void interrupted(int sig) {
+    exit(1);
+  }
 
 }
 
@@ -393,6 +397,11 @@ int main(int argc, char *argv[]) {
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
   }
+  signal(SIGINT, interrupted);
+  signal(SIGTERM, interrupted);
+  signal(SIGQUIT, interrupted);
+  signal(SIGKILL, interrupted);
+
   
   
 

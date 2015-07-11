@@ -688,7 +688,6 @@ void assembly::pimpl::add_goal(tr::goal_id g) {
                                         // non facts are considered as
                                         // rejectable goals in this code
     if( req.isId() ) {
-      // TODO populate all the attributes
       std::list<tu::Symbol> attrs;
       g->listAttributes(attrs, true);
       for(std::list<tu::Symbol>::const_iterator i=attrs.begin();
@@ -797,9 +796,6 @@ void assembly::pimpl::send_exec() {
 
 
 void assembly::pimpl::check_guarded() {
-  // TODO: make this mess less a big block and more a sett of more atomic calls
-  // intersliced with deliberation when needed
-  
   if( m_disp ) {
     eu::eint::basis_type e_cur = static_cast<eu::eint::basis_type>(m_clock.current());
     eu::TokenSet postponed;
@@ -914,7 +910,6 @@ void assembly::pimpl::update_state(clock::tick_type date) {
       }
       m_plan_tok->end()->restrictBaseDomain(future);
       m_cstr->propagate();
-      // TODO: need to revise this whole thing so it is managed by assmbly with proper priority
       send_exec();
     }
   }
