@@ -18,8 +18,6 @@
     <FlawHandler component="StandardOpenConditionHandler"/>
   </OpenConditionManager>
   
- 
-  
   <OpenConditionManager defaultPriority="20" component="EarliestFirst">
     <FlawFilter component="FactFilter" />
     <FlawFilter class-match="plan_state" predicate-match="execute" />
