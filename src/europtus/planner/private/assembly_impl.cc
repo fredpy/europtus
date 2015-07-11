@@ -56,6 +56,7 @@ namespace tlog=tu::log;
 namespace te=TREX::europa;
 namespace eu=EUROPA;
 namespace eu_s=eu::SOLVERS;
+namespace fs=boost::filesystem;
 
 
 namespace {
@@ -139,8 +140,32 @@ std::ostream &assembly::pimpl::print_token(std::ostream &out, eu::Token const &t
 // structor
 
 assembly::pimpl::pimpl(clock &c, tlog::text_log &log)
-  :m_lost(0), m_clock(c),m_planning(false),m_pending(false),
-  m_log(log) {}
+:m_lost(0), m_clock(c),m_planning(false),m_pending(false),m_log(log) {
+  std::string base_name;
+  {
+    std::ostringstream oss;
+    boost::posix_time::ptime cur = boost::posix_time::second_clock::universal_time();
+    oss<<cur.date()<<'.';
+    base_name = oss.str();
+  }
+  
+  if( fs::exists(base_name+"xml") ) {
+    size_t i=1;
+    for( ; i<=4096; ++i) {
+      std::ostringstream oss;
+      oss<<base_name<<i<<".xml";
+      if( !fs::exists(oss.str()) ) {
+        fs::rename(base_name+"xml", oss.str());
+        break;
+      }
+    }
+    if( i>4096 )
+      log(tlog::warn)<<"Failed to move previous "<<base_name<<"xml";
+  }
+  base_name += "xml";
+  m_xml.open(base_name.c_str());
+  m_xml<<"<Log>"<<std::endl;
+}
 
 void assembly::pimpl::initialize() {
   // Populate europa with desired modules
@@ -178,6 +203,11 @@ assembly::pimpl::~pimpl() {
   m_disp.reset();
   removeModule(m_europtus);
   doShutdown();
+  
+  if( m_tick_opened )
+    m_xml<<"  </tick>\n";
+  m_xml<<"</Log>"<<std::endl;
+  m_xml.close();
 }
 
 // observers
@@ -586,6 +616,8 @@ void assembly::pimpl::add_obs(tr::goal_id g) {
     eu::TokenId obs = new_token(g->object().str(),
                                 g->predicate().str(),
                                 true);
+    clock::tick_type cur = m_clock.current();
+    
     if( obs.isId() ) {
       // TODO populate all the attributes
       std::list<tu::Symbol> attrs;
@@ -606,6 +638,23 @@ void assembly::pimpl::add_obs(tr::goal_id g) {
           <<" do not have attribute "<<(*i)<<std::endl;
       }
     }
+    bool new_tick = false;
+    if( m_tick_opened && cur!=*m_tick_opened ) {
+      m_xml<<"  </tick>\n";
+      new_tick = true;
+    }
+    
+    if( new_tick || !m_tick_opened ) {
+      m_tick_opened = cur;
+      m_xml<<"  <tick value=\""<<cur<<"\">\n";
+    }
+    m_xml<<"    ";
+    boost::property_tree::ptree x = g->as_tree(true);
+    boost::property_tree::ptree::value_type out("Observation", x.front().second);
+    x.clear();
+    x.push_front(out);
+    tu::write_xml(m_xml, x, false);
+    m_xml<<std::endl;
   } catch(exception const &e) {
     log(tlog::error)<<"exception while adding observation:\n"
      <<"  - "<<*g<<'\n'

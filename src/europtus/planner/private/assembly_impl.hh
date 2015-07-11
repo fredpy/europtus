@@ -215,6 +215,9 @@ namespace europtus {
       
       propagator::id                      m_propagator;
       boost::scoped_ptr<dispatch_manager> m_disp;
+      
+      boost::optional<clock::tick_type> m_tick_opened;
+      std::ofstream m_xml;
     }; // europtus::planner::assmebly::pimpl
     
   }

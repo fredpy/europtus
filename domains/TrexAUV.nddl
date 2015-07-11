@@ -230,7 +230,7 @@ AUV::exec_survey {
 	(sin_angle * drift_speed) == survey.v;
     }
 
-    // compute my waypoints
+    // compute my waypoints a_* is entry, z_* is exit 
     float a_east, a_north, z_east, z_north;
     
     a_east == (shift_ax * cos_angle) + (shift_ay * sin_angle);
