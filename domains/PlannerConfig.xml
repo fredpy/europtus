@@ -13,7 +13,7 @@
        <FlawHandler component="EuroptusThreatHandler"/>
   </ThreatManager>
   
-  <OpenConditionManager defaultPriority="12" component="EarliestFirst" >
+  <OpenConditionManager defaultPriority="12" >
     <FlawFilter component="FactFilter" invert="1"/>
     <FlawHandler component="StandardOpenConditionHandler"/>
   </OpenConditionManager>
