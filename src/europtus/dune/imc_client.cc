@@ -140,14 +140,14 @@ tr::goal_id imc_client::get_token(imc::TrexToken *g, bool is_goal) {
   tr::goal_id ret(new tr::Goal(m_adapter.genericGoal(g, is_goal)));
   log("DBG")<<(*ret);
   
-  if( !is_goal ) {
-    CHRONO::duration<double> t_stamp(g->getTimeStamp());
-    typedef chrono_posix_convert< CHRONO::duration<double> > cvt;
-    europtus::clock::date_type
-      pdate = boost::posix_time::from_time_t(0)+cvt::to_posix(t_stamp);
-    
-    ret->restrictStart(m_adapter.time_conv().date_to_tick(pdate));
-  }
+//  if( !is_goal ) {
+//    CHRONO::duration<double> t_stamp(g->getTimeStamp());
+//    typedef chrono_posix_convert< CHRONO::duration<double> > cvt;
+//    europtus::clock::date_type
+//      pdate = boost::posix_time::from_time_t(0)+cvt::to_posix(t_stamp);
+//    
+//    ret->restrictStart(m_adapter.time_conv().date_to_tick(pdate));
+//  }
   return ret;
 }
 
