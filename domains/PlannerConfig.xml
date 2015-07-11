@@ -18,15 +18,24 @@
     <FlawHandler component="StandardOpenConditionHandler"/>
   </OpenConditionManager>
   
-
+ 
+  
   <OpenConditionManager defaultPriority="20" component="EarliestFirst">
     <FlawFilter component="FactFilter" />
     <FlawFilter class-match="plan_state" predicate-match="execute" />
+    <FlawFilter class-match="DrifterFollow"/>
     <FlawFilter class-match="Battery" />
     <FlawHandler component="StandardOpenConditionHandler"/>
   </OpenConditionManager>
 
- <OpenConditionManager defaultPriority="21" component="EarliestFirst">
+ <OpenConditionManager defaultPriority="21">
+    <FlawFilter component="FactFilter" />
+    <FlawFilter class-match="plan_state" />
+    <FlawFilter class-match="Battery" />
+    <FlawHandler component="StandardOpenConditionHandler"/>
+  </OpenConditionManager>
+
+  <OpenConditionManager defaultPriority="22" component="EarliestFirst">
     <FlawFilter component="FactFilter" />
     <FlawHandler component="StandardOpenConditionHandler"/>
   </OpenConditionManager>
