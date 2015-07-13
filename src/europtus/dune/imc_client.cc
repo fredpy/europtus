@@ -242,8 +242,8 @@ void imc_client::on_tick(imc_client::conn const &c,
 }
 
 void imc_client::async_poll(clock::tick_type date) {
-  static boost::optional<clock::tick_type> m_auv1, m_auv2;
   typedef TREX::transaction::IntegerDomain::base_type int_type;
+  static boost::optional<int_type> m_auv1, m_auv2;
   
   sig2::shared_connection_block lock(m_conn);
   m_date = date;
@@ -274,23 +274,22 @@ void imc_client::async_poll(clock::tick_type date) {
             log()<<"Observation: "<<*tok;
             
             // some special code to patch quickly
-            if( tok->object()=="auv1.estate" && tok->getStart().isSingleton() ) {
-              clock::tick_type cur = tok->getStart().getTypedSingleton<int_type, false>();
-              if( m_auv1 && cur<=(*m_auv1) ) {
-                log(log::warn)<<"Dropping this observation";
-                break;
+            if( tok->getStart().isSingleton() ) {
+              int_type cur = tok->getStart().getTypedSingleton<int_type, false>();
+              if( tok->object()=="auv1.estate" ) {
+                if( m_auv1.is_initialized() && cur<=(*m_auv1) ) {
+                  log(log::warn)<<"Dropping this observation ("<<cur<<" before "<<(*m_auv1)<<")";
+                  break;
+                }
+                m_auv1 = cur;
+              } else if( tok->object()=="auv2.estate" ) {
+                if( m_auv2.is_initialized() && cur<=(*m_auv2) ) {
+                  log(log::warn)<<"Dropping this observation("<<cur<<" before "<<(*m_auv2)<<")";
+                  break;
+                }
+                m_auv2 = cur;
               }
-              m_auv1 = cur;
             }
-            if( tok->object()=="auv2.estate" && tok->getStart().isSingleton() ) {
-              clock::tick_type cur = tok->getStart().getTypedSingleton<int_type, false>();
-              if( m_auv2 && cur<=(*m_auv2) ) {
-                log(log::warn)<<"Dropping this observation";
-                break;
-              }
-              m_auv2 = cur;
-            }
-            
             
             m_tok_sig(fact_t, tok);
             break;
