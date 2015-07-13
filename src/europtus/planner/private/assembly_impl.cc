@@ -949,7 +949,8 @@ void assembly::pimpl::tick_updated(clock::tick_type cur) {
            std::numeric_limits<eu::eint>::infinity());
     m_cur->restrictBaseDomain(future);
     if( 0==(cur%10) && m_last_log &&  (5+*m_last_log)<cur ) {
-        log()<<"Updated tick (still alive: "<<m_clock.to_date(cur)<<")";
+      log()<<"Updated tick (still alive: "<<m_clock.to_date(cur)<<" end="
+        <<m_clock.end()<<")";
     }
     update_state(cur);
     send_step();

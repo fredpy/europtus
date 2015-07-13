@@ -242,6 +242,9 @@ void imc_client::on_tick(imc_client::conn const &c,
 }
 
 void imc_client::async_poll(clock::tick_type date) {
+  static boost::optional<clock::tick_type> m_auv1, m_auv2;
+  typedef TREX::transaction::IntegerDomain::base_type int_type;
+  
   sig2::shared_connection_block lock(m_conn);
   m_date = date;
   if( m_polling ) {
@@ -266,8 +269,29 @@ void imc_client::async_poll(clock::tick_type date) {
 
         switch(op->op) {
           case imc::TrexOperation::OP_POST_TOKEN:
+            op->toText(log()<<"IMC: ");
             tok = get_token(op->token.get(), false);
             log()<<"Observation: "<<*tok;
+            
+            // some special code to patch quickly
+            if( tok->object()=="auv1.estate" && tok->getStart().isSingleton() ) {
+              clock::tick_type cur = tok->getStart().getTypedSingleton<int_type, false>();
+              if( m_auv1 && cur<=(*m_auv1) ) {
+                log(log::warn)<<"Dropping this observation";
+                break;
+              }
+              m_auv1 = cur;
+            }
+            if( tok->object()=="auv2.estate" && tok->getStart().isSingleton() ) {
+              clock::tick_type cur = tok->getStart().getTypedSingleton<int_type, false>();
+              if( m_auv2 && cur<=(*m_auv2) ) {
+                log(log::warn)<<"Dropping this observation";
+                break;
+              }
+              m_auv2 = cur;
+            }
+            
+            
             m_tok_sig(fact_t, tok);
             break;
           case imc::TrexOperation::OP_POST_GOAL:
